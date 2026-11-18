@@ -1510,7 +1510,7 @@ $('#view-tasks').addEventListener('click',e=>{const b=e.target.closest('[data-tk
 function renderSetup(){
   const c=cur(),el=$('#view-setup');
   let h='<div class="panel"><h2>🏫 班級</h2><div class="chips">'+S.classes.map(x=>'<button class="chip'+(x.id===S.cur?' on':'')+'" data-s="pick" data-id="'+x.id+'">'+esc(x.name)+'（'+x.students.length+' 人）</button>').join('')+'</div>'+
-    '<div class="row"><input type="text" id="newName" placeholder="新班級名稱，例如 502" style="width:200px"><button class="btn pri" data-s="add">＋ 新增班級</button>'+(c?'<button class="btn" data-s="rename">✏️ 改名</button><button class="btn danger" data-s="delc">刪除「'+esc(c.name)+'」</button>':'')+'</div></div>';
+    '<div class="row"><input type="text" id="newName" placeholder="新班級名稱，例如 502" style="width:200px"><button class="btn pri" data-s="add">＋ 新增班級</button>'+(c?'<button class="btn" data-s="rename">✏️ 改名</button><button class="btn" data-s="clrpts">🧹 清除積分</button><button class="btn danger" data-s="delc">刪除「'+esc(c.name)+'」</button>':'')+'</div></div>';
   if(c){
     const sm=seatOf(c);
     h+='<div class="panel"><h2>📥 上傳名單與照片（'+esc(c.name)+'）</h2>'+
@@ -1534,6 +1534,12 @@ $('#view-setup').addEventListener('click',e=>{
   if(a==='pick'){S.cur=b.dataset.id;save();renderAll();}
   else if(a==='add'){const name=$('#newName').value.trim();if(!name){toast('請先輸入班級名稱');return;}const n=newClass(name,0);S.classes.push(n);S.cur=n.id;save();renderAll();toast('已新增「'+name+'」，請上傳名單');}
   else if(a==='rename'){modal('<h2>班級改名</h2><input type="text" id="rn" value="'+esc(c.name)+'" style="font-size:20px;width:240px"><div class="acts"><button class="btn" data-act="x">取消</button><button class="btn pri" data-keep="ok">確定</button></div>','',{ok:()=>{const v=$('#rn').value.trim();if(v)c.name=v;closeModal();save();renderAll();}});}
+  else if(a==='clrpts'){
+    const wipe=L=>{L.forEach(x=>{x.pts={};x.bricks={};x.gb={1:0,2:0,3:0};x.dojoBase={};if(x.session){x.session.bonus={};x.session.gAdd={};x.session.undo=[];}});save();renderAll();};
+    modal('<h2>🧹 清除積分</h2><div>會把<b>個人點數 ⭐、累計得分、小組金幣 🪙</b>全部歸零。<br>班級、座號、姓名、照片、座位，以及學用品、作業考試、警告等紀錄都會保留。</div><div class="small" style="margin-top:6px">ClassDojo 的匯入基準也會一起清掉，之後重新匯入會從頭加分。清除後無法復原，建議先到「設定」下載備份檔。</div>'+
+      '<div class="acts"><button class="btn" data-act="x">取消</button><button class="btn danger" data-act="one">只清除「'+esc(c.name)+'」</button><button class="btn danger" data-act="all">清除全部 '+S.classes.length+' 個班</button></div>','',{
+      one:()=>confirmBox('確定清除「'+c.name+'」的積分？','無法復原。','清除',()=>{wipe([c]);toast('已清除「'+c.name+'」的積分');},true),
+      all:()=>confirmBox('確定清除全部班級的積分？','全部 '+S.classes.length+' 個班的點數和金幣都會歸零，無法復原。','全部清除',()=>{wipe(S.classes);toast('已清除全部班級的積分');},true)});}
   else if(a==='delc'){if(c.session){toast('這個班正在上課，請先下課');return;}confirmBox('刪除「'+c.name+'」？','名單、照片、金幣和所有紀錄都會刪除，無法復原。','刪除',()=>{c.students.forEach(s=>setPhoto(c.id,s.no,null));S.classes=S.classes.filter(x=>x!==c);S.cur=S.classes.length?S.classes[0].id:null;save();renderAll();},true);}
   else if(a==='paste'){applyRoster(c,parseRoster(textRows($('#paste').value)));}
   else if(a==='auto')confirmBox('依座號重新排座位？','會從第 1 組開始，依座號把大家重新排進 27 個位置。','重新排',()=>{autoSeat(c);c.roles.lead={};save();renderAll();});
