@@ -1183,11 +1183,46 @@ function oldSupModal(d,fname){
   draw();
 }
 
+
+/* ---------- 全部班級點數總表（Excel）匯入 ---------- */
+function parseDojoMulti(rows){
+  const hi=rows.findIndex(r=>{const t=r.map(x=>String(x||'').trim());return t.includes('班級')&&t.includes('座號')&&t.includes('姓名')&&t.some(x=>/加分|積極向上|积极向上/.test(x));});if(hi<0)return null;
+  const H=rows[hi].map(x=>String(x||'').trim()),ix=re=>H.findIndex(x=>re.test(x));
+  const cC=H.indexOf('班級'),cN=H.indexOf('座號'),cM=H.indexOf('姓名'),cP=ix(/加分|積極向上|积极向上/),cG=ix(/有待改/);
+  const by={};
+  rows.slice(hi+1).forEach(r=>{const cls=String(r[cC]||'').trim(),no=parseInt(r[cN]),nm=String(r[cM]||'').trim();if(!cls||!(no>0))return;
+    (by[cls]=by[cls]||[]).push({no:no,name:nm.slice(0,12),pos:parseFloat(r[cP])||0,neg:cG>=0?Math.abs(parseFloat(r[cG])||0):0});});
+  return Object.keys(by).length?by:null;
+}
+function dojoMultiModal(by,fname){
+  const codes=Object.keys(by).sort((a,b)=>(parseInt(a)||9999)-(parseInt(b)||9999));
+  const match=k=>S.classes.find(c=>!/示範/.test(c.name)&&(c.name===k||clsCode(c.name)===(clsCode(k)||k)));
+  const pick={};codes.forEach(k=>{const m=match(k);pick[k]=m?m.id:'new';});
+  const o={mode:S.settings.dojoMode||'net',ratio:S.settings.dojoRatio||5,delta:true};
+  const draw=()=>{modal('<h2>⭐ 匯入全部班級點數</h2><div class="small">'+esc(fname)+'：'+codes.length+' 個班、'+codes.reduce((a,k)=>a+by[k].length,0)+' 位學生</div>'+
+    '<div class="sumnote" style="line-height:2">計分方式：<label><input type="radio" name="mm" value="net"'+(o.mode==='net'?' checked':'')+'> 加分減掉「有待改進」</label>　<label><input type="radio" name="mm" value="pos"'+(o.mode==='pos'?' checked':'')+'> 只算加分</label><br>'+
+    '個人點數 1 點 ＝ ⭐1；小組金幣：每 <input type="number" id="mmr" min="1" max="50" value="'+o.ratio+'"> 點 ＝ 1 金幣<br><label><input type="checkbox" id="mmd"'+(o.delta?' checked':'')+'> 只加上次匯入之後新增的點數（再匯入一次不會重複加）</label></div>'+
+    '<div class="tw" style="max-height:44vh;overflow:auto;margin-top:8px"><table><tr><th>班級</th><th>人數</th><th>匯入到</th></tr>'+codes.map(k=>'<tr><td><b>'+esc(k)+'</b></td><td>'+by[k].length+'</td><td><select class="inp" data-mm="'+esc(k)+'"><option value="new"'+(pick[k]==='new'?' selected':'')+'>＋ 新增班級「'+esc(k)+'」</option>'+S.classes.map(c=>'<option value="'+c.id+'"'+(pick[k]===c.id?' selected':'')+'>加入現有「'+esc(c.name)+'」</option>').join('')+'<option value="skip"'+(pick[k]==='skip'?' selected':'')+'>不匯入</option></select></td></tr>').join('')+'</table></div>'+
+    '<div class="acts"><button class="btn" data-act="x">取消</button><button class="btn pri" data-keep="go">匯入 '+codes.filter(k=>pick[k]!=='skip').length+' 個班</button></div>','wide',{__lock:true,go:()=>{
+      let P=0,G=0,nc=0;codes.forEach(k=>{if(pick[k]==='skip')return;let c=pick[k]==='new'?null:S.classes.find(x=>x.id===pick[k]);if(!c){c=newClass(k,0);S.classes.push(c);nc++;}
+        rosterInto(c,by[k].map(x=>({no:x.no,name:x.name||('同學'+String(x.no).padStart(2,'0')),group:0})));c.dojoBase=c.dojoBase||{};
+        by[k].forEach(x=>{const b=c.dojoBase[x.no],now=dojoPts(x,o.mode),was=o.delta&&b?dojoPts(b,o.mode):0,pp=Math.max(0,now-was),gg=Math.max(0,Math.floor(now/o.ratio)-(o.delta&&b?Math.floor(was/o.ratio):0));
+          if(pp||gg){give(c,x.no,pp,gg);P+=pp;G+=gg;}c.dojoBase[x.no]={pos:x.pos,neg:x.neg};});
+        c.dojoLog=c.dojoLog||[];c.dojoLog.push({at:Date.now(),file:fname,bricks:0,add:0,mode:o.mode,ratio:o.ratio});});
+      S.settings.dojoMode=o.mode;S.settings.dojoRatio=o.ratio;closeModal();save();renderAll();toast('匯入完成：'+(nc?'新增 '+nc+' 個班、':'')+'個人 ⭐+'+P+'、小組 🪙+'+G);}});
+    const ov=$('#overlay');ov.querySelectorAll('input[name=mm]').forEach(r=>r.onchange=()=>{o.mode=r.value;draw();});
+    const e1=ov.querySelector('#mmr');e1.onchange=()=>{o.ratio=Math.max(1,Math.min(50,parseInt(e1.value)||5));draw();};
+    const e2=ov.querySelector('#mmd');e2.onchange=()=>{o.delta=e2.checked;draw();};
+    ov.querySelectorAll('[data-mm]').forEach(el=>el.onchange=()=>{pick[el.dataset.mm]=el.value;draw();});};
+  draw();
+}
+
 async function importFile(file){
   const c=cur();if(!c)return;
   if(/\.xls$/i.test(file.name)){toast('舊版 .xls 無法讀取，請另存成 .xlsx 或 CSV');return;}
   try{const buf=await file.arrayBuffer(),sheets=/\.xlsx$/i.test(file.name)?await readXlsxAll(buf):[{name:'',rows:textRows(decodeText(buf))}],rows=sheets[0]?sheets[0].rows:[];
     const dj=parseDojo(rows);if(dj){openDojo(dj,file.name);return;}
+    const mm=sheets.map(x=>parseDojoMulti(x.rows)).find(Boolean);if(mm){dojoMultiModal(mm,file.name);return;}
     const sch=parseSchool(sheets);if(sch){schoolModal(sch,file.name);return;}
     applyRoster(c,parseRoster(rows));}
   catch(e){toast('讀取失敗：'+(e.message||e));}
@@ -1479,7 +1514,7 @@ function renderSetup(){
   if(c){
     const sm=seatOf(c);
     h+='<div class="panel"><h2>📥 上傳名單與照片（'+esc(c.name)+'）</h2>'+
-      '<div class="row"><label class="file btn pri">📄 上傳名單檔（Excel / CSV / TXT）<input type="file" id="rosterFile" accept=".xlsx,.csv,.txt,.tsv"></label><label class="file btn pri">🖼️ 批次上傳照片<input type="file" id="bulk" accept="image/*" multiple></label><label class="file btn">⭐ 匯入 ClassDojo 點數<input type="file" id="dojoFile" accept=".csv"></label><label class="file btn">📒 匯入舊學用品紀錄<input type="file" id="oldSup" accept=".json"></label></div>'+
+      '<div class="row"><label class="file btn pri">📄 上傳名單檔（Excel / CSV / TXT）<input type="file" id="rosterFile" accept=".xlsx,.csv,.txt,.tsv"></label><label class="file btn pri">🖼️ 批次上傳照片<input type="file" id="bulk" accept="image/*" multiple></label><label class="file btn">⭐ 匯入 ClassDojo 點數<input type="file" id="dojoFile" accept=".csv,.xlsx"></label><label class="file btn">📒 匯入舊學用品紀錄<input type="file" id="oldSup" accept=".json"></label></div>'+
       '<div class="small">名單檔：有「座號、姓名」兩欄即可（有「組別」欄會依組別排座位）；同座號會更新姓名，新座號會新增。<br>🏫 全校名單：有「班級」欄（例如 501、5年1班、五年一班，或「年級」＋「班級」兩欄），或每個班一個工作表，會自動分成各班。<br>ClassDojo：在 ClassDojo 網頁版「Options → View reports → Export」下載的 CSV，點數會換成金幣，也可以順便建立名單。<br>照片：檔名包含座號或姓名，例如 05.jpg、05王小明.jpg、王小明.jpg；名單裡還沒有的座號會自動新增成學生。</div>'+
       '<h3>或直接貼上名單</h3><textarea id="paste" placeholder="一行一位，例如：&#10;1 王小明&#10;2 陳小華&#10;（也可以從 Excel 複製座號、姓名兩欄貼上）"></textarea><div class="row"><button class="btn" data-s="paste">匯入貼上的名單</button></div></div>';
     h+='<div class="panel"><h2>👑 幹部設定</h2><div class="small">下課時由各組組長檢查，最後由'+esc(S.settings.finalRole)+'確認。</div><div class="row">'+
@@ -1511,7 +1546,7 @@ $('#view-setup').addEventListener('change',async e=>{
   const t=e.target,c=cur();if(!c)return;
   if(t.id==='rosterFile'&&t.files[0]){await importFile(t.files[0]);}
   else if(t.id==='oldSup'&&t.files[0]){const f=t.files[0];t.value='';try{const d=JSON.parse(await f.text());if(d.type!=='classtown-supplies')throw 0;oldSupModal(d,f.name);}catch(err){toast('這不是學用品紀錄檔');}}
-  else if(t.id==='dojoFile'&&t.files[0]){const f=t.files[0];t.value='';try{const rows=textRows(decodeText(await f.arrayBuffer())),dj=parseDojo(rows);if(dj)openDojo(dj,f.name);else toast('這個檔案看起來不是 ClassDojo 的點數報表');}catch(err){toast('讀取失敗');}}
+  else if(t.id==='dojoFile'&&t.files[0]){const f=t.files[0];t.value='';try{const buf=await f.arrayBuffer();if(/\.xlsx$/i.test(f.name)){const sh=await readXlsxAll(buf),mm=sh.map(x=>parseDojoMulti(x.rows)).find(Boolean);if(mm)dojoMultiModal(mm,f.name);else toast('這個 Excel 看起來不是點數總表（需要「班級、座號、姓名、加分、有待改進」欄）');return;}const rows=textRows(decodeText(buf)),dj=parseDojo(rows);if(dj)openDojo(dj,f.name);else toast('這個檔案看起來不是 ClassDojo 的點數報表');}catch(err){toast('讀取失敗');}}
   else if(t.id==='bulk'&&t.files.length){await bulkPhotos(Array.from(t.files));}
   else if(t.dataset.ph&&t.files[0]){try{setPhoto(c.id,+t.dataset.ph,await resizeImage(t.files[0]));renderSetup();}catch(err){toast('這張照片讀不出來');}}
   else if(t.dataset.name){const s=stu(c,+t.dataset.name);if(s&&t.value.trim()){s.name=t.value.trim().slice(0,12);save();}}
