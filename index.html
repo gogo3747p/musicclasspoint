@@ -542,14 +542,14 @@ function irrOf(c,g){return cardsOf(c,g).filter(x=>x.k==='w'&&!x.used);}
 function plotState(c,p){ // empty | wait | lesson | water | ripe
   if(p.st<0)return 'empty';if(p.st>=5)return 'ripe';
   if(Date.now()-p.t<FS('farmMin')*60000)return 'wait';
-  if(p.st===4&&S.settings.nextLesson&&(c.lessons||[]).length<=(p.ls||0))return 'lesson';
+  if(p.st===4&&S.settings.nextLesson&&(c.lessons||[]).filter(l=>!l.imp).length<=(p.ls||0))return 'lesson';
   return 'water';}
 const leftMs=p=>Math.max(0,FS('farmMin')*60000-(Date.now()-p.t));
 function farmCount(c,g){const r={water:0,ripe:0,empty:0,wait:0,lesson:0};farmOf(c,g).forEach(p=>r[plotState(c,p)]++);return r;}
 const wImg=(p)=>(p.m?WHEAT_MURI:WHEAT_URI)[Math.max(0,p.st)];
 function plotAct(c,g,i,quiet){
   const p=farmOf(c,g)[i],st=plotState(c,p),inv=invOf(c,g);
-  if(st==='empty'){const k=stCost(0);if((c.gb[g]||0)<k){if(!quiet)toast('第 '+g+' 組的金幣不夠（灑播要 🪙'+k+'）');return false;}c.gb[g]-=k;p.st=0;p.t=Date.now();p.m=false;p.ls=(c.lessons||[]).length;}
+  if(st==='empty'){const k=stCost(0);if((c.gb[g]||0)<k){if(!quiet)toast('第 '+g+' 組的金幣不夠（灑播要 🪙'+k+'）');return false;}c.gb[g]-=k;p.st=0;p.t=Date.now();p.m=false;p.ls=(c.lessons||[]).filter(l=>!l.imp).length;}
   else if(st==='water'){const k=stCost(p.st+1);if((c.gb[g]||0)<k){if(!quiet)toast('第 '+g+' 組的金幣不夠（長到「'+WHEAT_ST[p.st+1][0]+'」要 🪙'+k+'）');return false;}c.gb[g]-=k;p.st++;p.t=Date.now();}
   else if(st==='ripe'){const y=FS('yield')*(p.m?FS('magicMul'):1),m=p.m;inv.w+=y;p.st=-1;p.t=0;p.m=false;if(!quiet)harvestPop(g,y,m);return {y:y,m:m};}
   else if(st==='lesson'){if(!quiet)toast('「灌漿成熟期」要等到下一節課才能長成喔！');return false;}
@@ -1021,7 +1021,7 @@ function renderRecords(){
   if(!c.lessons.length)h+='<div class="small">還沒有完成的課堂紀錄，下課結算後會出現在這裡。</div>';
   else{h+='<div class="tw"><table><tr><th>日期</th><th>時間</th><th>各組 🪙</th><th>💬 聊聊</th><th>🎒 學用品缺帶</th><th>請假</th><th></th></tr>';
     c.lessons.slice().reverse().forEach((l,ri)=>{const i=c.lessons.length-1-ri,d=new Date(l.start),e=new Date(l.end),hm=x=>String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0');
-      h+='<tr><td>'+l.day+'</td><td>'+hm(d)+'–'+hm(e)+'</td><td>'+GROUPS.map(g=>g+'組+'+(l.earn[g]||0)+(l.clean&&l.clean[g]?'✅':'')).join('　')+'</td><td>'+(l.talk||[]).map(n=>n+'號').join('、')+'</td><td style="white-space:normal">'+esc(Object.keys(l.miss||{}).map(n=>n+'號（'+l.miss[n].join('、')+'）').join('、'))+(l.supChecked?'':'<span class="small">未檢查</span>')+'</td><td>'+(l.absent||[]).map(n=>n+'號').join('、')+'</td><td><button class="btn sm danger" data-r="del" data-i="'+i+'">刪除</button></td></tr>';});
+      h+='<tr><td>'+l.day+'</td><td>'+(l.imp?esc(l.label||'')+' <span class="small">舊紀錄</span>':hm(d)+'–'+hm(e))+'</td><td>'+GROUPS.map(g=>g+'組+'+(l.earn[g]||0)+(l.clean&&l.clean[g]?'✅':'')).join('　')+'</td><td>'+(l.talk||[]).map(n=>n+'號').join('、')+'</td><td style="white-space:normal">'+esc(Object.keys(l.miss||{}).map(n=>n+'號（'+l.miss[n].join('、')+'）').join('、'))+(l.supChecked?'':'<span class="small">未檢查</span>')+'</td><td>'+(l.absent||[]).map(n=>n+'號').join('、')+'</td><td><button class="btn sm danger" data-r="del" data-i="'+i+'">刪除</button></td></tr>';});
     h+='</table></div><div class="small" style="margin-top:6px">✅ = 該組通過下課組長檢查。刪除某節紀錄不會收回已發的金幣。</div>';}
   const dl=(c.dojoLog||[]).slice().reverse();
   if(dl.length)h+='</div><div class="panel"><h2>⭐ ClassDojo 匯入紀錄</h2><div class="tw"><table><tr><th>時間</th><th>檔案</th><th>計分</th><th>🪙</th><th>新增學生</th></tr>'+dl.map(r=>{const d=new Date(r.at);return '<tr><td>'+isoDay(d)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+'</td><td>'+esc(r.file)+'</td><td>'+(r.mode==='pos'?'只算加分':'加分減有待改進')+'，每 '+r.ratio+' 點 1 金幣</td><td>+'+r.bricks+'</td><td>'+(r.add||'')+'</td></tr>';}).join('')+'</table></div>';
@@ -1154,6 +1154,29 @@ function schoolModal(by,fname){
       closeModal();S.classes.sort((a,b)=>(/示範/.test(a.name)?1:0)-(/示範/.test(b.name)?1:0)||(parseInt(clsCode(a.name)||a.name)||9999)-(parseInt(clsCode(b.name)||b.name)||9999));
       save();renderAll();toast('全校名單匯入完成：新增 '+nc+' 個班級、'+ns+' 位學生');}});
     document.querySelectorAll('#overlay [data-sch]').forEach(el=>el.onchange=()=>{pick[el.dataset.sch]=el.value;draw();});};
+  draw();
+}
+
+
+/* ---------- 匯入舊學用品紀錄 ---------- */
+function oldSupModal(d,fname){
+  const L=d.classes||[],match=n=>S.classes.find(c=>!/示範/.test(c.name)&&(c.name===n||clsCode(c.name)===(clsCode(n)||n)));
+  const pick={};L.forEach(x=>{const m=match(x.name);pick[x.name]=m?m.id:'new';});
+  const tot=x=>x.weeks.reduce((a,w)=>a+Object.keys(w.miss).length,0);
+  const draw=()=>{modal('<h2>📒 匯入舊學用品紀錄</h2><div class="small">'+esc(fname)+'（'+esc(d.semester||'')+'）：'+L.length+' 個班級。每一週會變成一節「舊紀錄」課堂，未帶次數會算進「未帶滿 '+S.settings.supFree+' 次後扣分」的累計；匯入時不會扣分。</div>'+
+    '<div class="tw" style="max-height:52vh;overflow:auto;margin-top:8px"><table><tr><th>班級</th><th>學生</th><th>節數</th><th>未帶人次</th><th>匯入到</th></tr>'+L.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td>'+x.students.length+'</td><td>'+x.weeks.length+'</td><td>'+tot(x)+'</td><td><select class="inp" data-os="'+esc(x.name)+'"><option value="new"'+(pick[x.name]==='new'?' selected':'')+'>＋ 新增班級「'+esc(x.name)+'」</option>'+S.classes.map(c=>'<option value="'+c.id+'"'+(pick[x.name]===c.id?' selected':'')+'>加入現有「'+esc(c.name)+'」</option>').join('')+'<option value="skip"'+(pick[x.name]==='skip'?' selected':'')+'>不匯入</option></select></td></tr>').join('')+'</table></div>'+
+    '<div class="small" style="margin-top:6px">名單裡沒有的學生會自動加入；再匯入一次會取代之前匯入的舊紀錄，不會重複。</div>'+
+    '<div class="acts"><button class="btn" data-act="x">取消</button><button class="btn pri" data-keep="go">匯入 '+L.filter(x=>pick[x.name]!=='skip').length+' 個班</button></div>','wide',{__lock:true,go:()=>{
+      let nc=0,nl=0;L.forEach(x=>{if(pick[x.name]==='skip')return;let c=pick[x.name]==='new'?null:S.classes.find(y=>y.id===pick[x.name]);
+        if(!c){c=newClass(x.name,0);S.classes.push(c);nc++;}
+        rosterInto(c,x.students.map(o=>({no:o.no,name:o.name,group:0})));
+        c.lessons=(c.lessons||[]).filter(l=>!l.imp);
+        x.weeks.forEach(w=>{const t=new Date(w.day+'T08:00:00').getTime();
+          c.lessons.push({imp:true,label:w.label,day:w.day,start:t,end:t+2400000,warn:{},miss:w.miss||{},absent:w.absent||[],late:w.late||[],supChecked:true,earn:{1:0,2:0,3:0},clean:{},talk:[]});nl++;});
+        c.lessons.sort((a,b)=>a.start-b.start);});
+      closeModal();S.classes.sort((a,b)=>(/示範/.test(a.name)?1:0)-(/示範/.test(b.name)?1:0)||(parseInt(clsCode(a.name)||a.name)||9999)-(parseInt(clsCode(b.name)||b.name)||9999));
+      save();renderAll();toast('匯入完成：'+(nc?'新增 '+nc+' 個班級、':'')+nl+' 節舊紀錄');}});
+    document.querySelectorAll('#overlay [data-os]').forEach(el=>el.onchange=()=>{pick[el.dataset.os]=el.value;draw();});};
   draw();
 }
 
@@ -1453,7 +1476,7 @@ function renderSetup(){
   if(c){
     const sm=seatOf(c);
     h+='<div class="panel"><h2>📥 上傳名單與照片（'+esc(c.name)+'）</h2>'+
-      '<div class="row"><label class="file btn pri">📄 上傳名單檔（Excel / CSV / TXT）<input type="file" id="rosterFile" accept=".xlsx,.csv,.txt,.tsv"></label><label class="file btn pri">🖼️ 批次上傳照片<input type="file" id="bulk" accept="image/*" multiple></label><label class="file btn">⭐ 匯入 ClassDojo 點數<input type="file" id="dojoFile" accept=".csv"></label></div>'+
+      '<div class="row"><label class="file btn pri">📄 上傳名單檔（Excel / CSV / TXT）<input type="file" id="rosterFile" accept=".xlsx,.csv,.txt,.tsv"></label><label class="file btn pri">🖼️ 批次上傳照片<input type="file" id="bulk" accept="image/*" multiple></label><label class="file btn">⭐ 匯入 ClassDojo 點數<input type="file" id="dojoFile" accept=".csv"></label><label class="file btn">📒 匯入舊學用品紀錄<input type="file" id="oldSup" accept=".json"></label></div>'+
       '<div class="small">名單檔：有「座號、姓名」兩欄即可（有「組別」欄會依組別排座位）；同座號會更新姓名，新座號會新增。<br>🏫 全校名單：有「班級」欄（例如 501、5年1班、五年一班，或「年級」＋「班級」兩欄），或每個班一個工作表，會自動分成各班。<br>ClassDojo：在 ClassDojo 網頁版「Options → View reports → Export」下載的 CSV，點數會換成金幣，也可以順便建立名單。<br>照片：檔名包含座號或姓名，例如 05.jpg、05王小明.jpg、王小明.jpg；名單裡還沒有的座號會自動新增成學生。</div>'+
       '<h3>或直接貼上名單</h3><textarea id="paste" placeholder="一行一位，例如：&#10;1 王小明&#10;2 陳小華&#10;（也可以從 Excel 複製座號、姓名兩欄貼上）"></textarea><div class="row"><button class="btn" data-s="paste">匯入貼上的名單</button></div></div>';
     h+='<div class="panel"><h2>👑 幹部設定</h2><div class="small">下課時由各組組長檢查，最後由'+esc(S.settings.finalRole)+'確認。</div><div class="row">'+
@@ -1484,6 +1507,7 @@ $('#view-setup').addEventListener('click',e=>{
 $('#view-setup').addEventListener('change',async e=>{
   const t=e.target,c=cur();if(!c)return;
   if(t.id==='rosterFile'&&t.files[0]){await importFile(t.files[0]);}
+  else if(t.id==='oldSup'&&t.files[0]){const f=t.files[0];t.value='';try{const d=JSON.parse(await f.text());if(d.type!=='classtown-supplies')throw 0;oldSupModal(d,f.name);}catch(err){toast('這不是學用品紀錄檔');}}
   else if(t.id==='dojoFile'&&t.files[0]){const f=t.files[0];t.value='';try{const rows=textRows(decodeText(await f.arrayBuffer())),dj=parseDojo(rows);if(dj)openDojo(dj,f.name);else toast('這個檔案看起來不是 ClassDojo 的點數報表');}catch(err){toast('讀取失敗');}}
   else if(t.id==='bulk'&&t.files.length){await bulkPhotos(Array.from(t.files));}
   else if(t.dataset.ph&&t.files[0]){try{setPhoto(c.id,+t.dataset.ph,await resizeImage(t.files[0]));renderSetup();}catch(err){toast('這張照片讀不出來');}}
