@@ -410,6 +410,7 @@ body.vclass .legend,body.vclass .modetip{color:#334155}
   <select id="classSel"></select>
   <button class="tbtn go" id="btnLesson">▶ 開始上課</button>
   <button class="tbtn" id="btnGames">🎮 遊戲</button>
+  <span id="syncDot" style="font-size:20px"></span>
   <span id="timer"></span>
   <nav>
     <button data-view="class">上課</button><button data-view="town">魔法小鎮</button><button data-view="lotto">樂透</button><button data-view="tasks">作業考試</button><button data-view="records">紀錄</button><button data-view="setup">班級與名單</button><button data-view="settings">設定</button>
@@ -436,12 +437,13 @@ const GROUPS=[1,2,3];
 /* ---------- 儲存：資料在 localStorage，照片在 IndexedDB ---------- */
 let store=null;try{store=window.localStorage;store.setItem('__t','1');store.removeItem('__t');}catch(e){store=null;}
 function load(){if(!store)return null;try{return JSON.parse(store.getItem(KEY));}catch(e){return null;}}
-function save(){if(!store)return;try{store.setItem(KEY,JSON.stringify(S));}catch(e){toast('儲存失敗：瀏覽器空間不足');}}
+function save(){if(!store)return;try{store.setItem(KEY,JSON.stringify(S));}catch(e){toast('儲存失敗：瀏覽器空間不足');}syncSoon();}
 let db=null;const PH={};
 function idbOpen(){return new Promise(res=>{try{const r=indexedDB.open('classtown',1);r.onupgradeneeded=()=>r.result.createObjectStore('ph');r.onsuccess=()=>{db=r.result;res();};r.onerror=()=>res();}catch(e){res();}});}
 function idbLoad(){return new Promise(res=>{if(!db)return res();try{const q=db.transaction('ph').objectStore('ph').openCursor();q.onsuccess=e=>{const cu=e.target.result;if(cu){PH[cu.key]=cu.value;cu.continue();}else res();};q.onerror=()=>res();}catch(e){res();}});}
 function getPhoto(cid,no){return PH[cid+'_'+no]||null;}
-function setPhoto(cid,no,data){const k=cid+'_'+no;if(data)PH[k]=data;else delete PH[k];if(db){try{const st=db.transaction('ph','readwrite').objectStore('ph');if(data)st.put(data,k);else st.delete(k);}catch(e){}}}
+function setPhoto(cid,no,data){setPhotoLocal(cid,no,data);syPhotoPut(cid+'_'+no,data||null);}
+function setPhotoLocal(cid,no,data){const k=cid+'_'+no;if(data)PH[k]=data;else delete PH[k];if(db){try{const st=db.transaction('ph','readwrite').objectStore('ph');if(data)st.put(data,k);else st.delete(k);}catch(e){}}}
 
 /* ---------- 預設值 ---------- */
 const DEF_SET={supFree:3,supPen:1,r1:30,r2:60,r3:100,rk1:3,rk2:2,rk3:1,examBonus:10,drawDays:'1,15',termEnd:'',p3:'餅乾 ×1',p4:'隨機吊飾 ×1',p5:'飲料 ×1',p6:'下午茶套組',farmMin:2,nextLesson:true,sc0:10,sc1:4,sc2:6,sc3:8,sc4:10,sc5:12,yield:10,wheatPrice:6,magicMul:2,cardCost:30,privRate:30,irrRate:20,limit:3,penalty:1,limitMsg:'請下課來找老師聊聊 🙂',bGood:1,bSup:1,bClean:1,speed:1,finalRole:'音樂小老師',cleanOn:true,flip:false,sound:true};
@@ -719,6 +721,7 @@ const stu=(c,no)=>c.students.find(s=>s.no===no);
 
 let S=load();
 if(!S||!Array.isArray(S.classes)){S={classes:[],cur:null,settings:{}};const d=newClass('501（示範）',27);S.classes.push(d);S.cur=d.id;}
+function fixState(){
 S.settings=Object.assign({},DEF_SET,S.settings||{});if(S.settings.finalRole==='音樂長')S.settings.finalRole='音樂小老師';if(!S.rkV){S.rkV=1;S.settings.rk1=3;S.settings.rk2=2;S.settings.rk3=1;}
 if(!Array.isArray(S.supplies)||!S.supplies.length)S.supplies=DEF_SUP.slice();
 if(!Array.isArray(S.games))S.games=DEF_GAMES.map(x=>Object.assign({},x));
@@ -727,6 +730,8 @@ if(!Array.isArray(S.privCards))S.privCards=DEF_PRIV.map(x=>Object.assign({},x));
 if(!Array.isArray(S.cropCards))S.cropCards=DEF_CROPS.map(x=>Object.assign({},x));if(!S.cropV){S.cropV=2;DEF_CROPS.forEach(d=>{if(!S.cropCards.some(x=>x.id===d.id))S.cropCards.push(Object.assign({},d));});}
 if(!Array.isArray(S.cleanItems)||!S.cleanItems.length)S.cleanItems=DEF_CLEAN.map(x=>Object.assign({},x));
 S.classes.forEach(fixClass);
+}
+fixState();
 if(!S.classes.find(c=>c.id===S.cur))S.cur=S.classes.length?S.classes[0].id:null;
 const cur=()=>S.classes.find(c=>c.id===S.cur)||null;
 let view='class',mode='warn',selSeat=null,upG=0;
@@ -1445,7 +1450,7 @@ function renderSettings(){
     '<div class="panel"><h2>🎒 學用品項目</h2><div class="chips">'+S.supplies.map((it,i)=>'<span class="chip">'+esc(it)+' <button class="btn sm danger" data-b="supdel" data-i="'+i+'">×</button></span>').join('')+'</div><div class="row"><input type="text" id="supNew" placeholder="新增項目，例如：直笛" style="width:200px"><button class="btn" data-b="supadd">＋ 新增</button></div></div>'+
     '<div class="panel"><h2>🧹 下課檢查與其他</h2><div class="row">'+chk('cleanOn','下課時進行「小組長檢查」')+'　最後確認的幹部名稱 <input type="text" data-set="finalRole" value="'+esc(s.finalRole)+'" style="width:110px"></div><div class="small">檢查項目可以在檢查畫面按「✏️ 編輯檢查項目」修改。</div>'+
     '<div class="row">'+chk('flip','座位表上下左右翻轉（講台在上方）')+'　'+chk('sound','音效')+'</div></div>'+
-    '<div class="panel"><h2>💾 備份</h2><div class="small">資料存在這台裝置的這個瀏覽器裡。換裝置或清除瀏覽資料前，請先下載備份檔（含照片）。</div><div class="row"><button class="btn pri" data-b="export">⬇️ 下載備份檔</button><label class="file btn">⬆️ 從備份檔還原<input type="file" accept=".json,application/json" id="importFile"></label></div></div>';
+    syncPanelHTML()+'<div class="panel"><h2>💾 備份</h2><div class="small">資料存在這台裝置的這個瀏覽器裡。換裝置或清除瀏覽資料前，請先下載備份檔（含照片）。</div><div class="row"><button class="btn pri" data-b="export">⬇️ 下載備份檔</button><label class="file btn">⬆️ 從備份檔還原<input type="file" accept=".json,application/json" id="importFile"></label></div></div>';
 }
 $('#view-settings').addEventListener('change',e=>{
   const t=e.target,k=t.dataset.set;
@@ -1468,6 +1473,10 @@ $('#view-settings').addEventListener('click',e=>{
   if(a==='gmadd'){S.games.push({icon:'🎮',name:'新遊戲',url:''});save();renderSettings();return;}
   if(a==='gmdel'){S.games.splice(+b.dataset.i,1);save();renderSettings();return;}
   if(a==='gmreset'){S.games=DEF_GAMES.map(x=>Object.assign({},x));save();renderSettings();return;}
+  if(a==='syon'){syConnect($('#syU').value,$('#syR').value,false);return;}
+  if(a==='syoff'){confirmBox('中斷同步？','這台裝置之後只會存在自己的瀏覽器，資料不會被刪除。','中斷',()=>{const c=syGet();c.on=false;sySet(c);syStart();renderSettings();});return;}
+  if(a==='synow'){if(SY)SY.last=0;toast('同步中…');return;}
+  if(a==='sylink'){const l=syJoinLink();(navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>toast('已複製平板連結'),()=>modal('<h2>平板連結</h2><textarea style="width:100%;height:90px">'+esc(l)+'</textarea><div class="acts"><button class="btn pri" data-act="x">好</button></div>'));return;}
   if(a==='supadd'){const v=$('#supNew').value.trim();if(v&&!S.supplies.includes(v)){S.supplies.push(v);save();renderSettings();}}
   else if(a==='supdel'){if(S.supplies.length>1){S.supplies.splice(+b.dataset.i,1);save();renderSettings();}else toast('至少要保留一個項目');}
   else if(a==='export')download('班級小鎮備份_'+isoDay()+'.json',JSON.stringify({S:S,photos:PH}),'application/json');
@@ -1481,10 +1490,105 @@ function showGames(){
     '<div class="acts"><button class="btn" data-act="x">關閉</button></div>','wide');
 }
 $('#btnGames').addEventListener('click',showGames);
+/* ---------- 雲端同步（Firebase Realtime Database，電腦與平板共用） ---------- */
+var SY=null;
+const SYK='classtown_sync',SYB='classtown_base';
+function syGet(){try{return JSON.parse(localStorage.getItem(SYK))||{};}catch(e){return {};}}
+function sySet(o){try{localStorage.setItem(SYK,JSON.stringify(o));}catch(e){}}
+function docOf(){const d=JSON.parse(JSON.stringify(S));delete d.cur;return d;}
+const isObj=x=>x&&typeof x==='object'&&!Array.isArray(x);
+const sameJ=(a,b)=>JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b);
+const akey=x=>isObj(x)?(x.id||x.start||x.at||null):null;
+function m3(b,l,r){ // 三方合併：base、這台、雲端
+  if(sameJ(l,r))return l;if(sameJ(b,l))return r;if(sameJ(b,r))return l;
+  if(typeof l==='number'&&typeof r==='number'&&typeof b==='number')return Math.round((l+r-b)*1000)/1000;
+  if(isObj(l)&&isObj(r)){const o={},B=isObj(b)?b:{};new Set([...Object.keys(l),...Object.keys(r)]).forEach(k=>{const v=m3(B[k],l[k],r[k]);if(v!==undefined)o[k]=v;});return o;}
+  if(Array.isArray(l)&&Array.isArray(r)&&l.concat(r).every(x=>akey(x))){
+    const bm={},lm={},rm={},ord=[];(Array.isArray(b)?b:[]).forEach(x=>{if(akey(x))bm[akey(x)]=x;});
+    l.forEach(x=>lm[akey(x)]=x);r.forEach(x=>{rm[akey(x)]=x;ord.push(akey(x));});l.forEach(x=>{if(!(akey(x) in rm))ord.push(akey(x));});
+    return ord.map(k=>m3(bm[k],lm[k],rm[k])).filter(x=>x!==undefined);}
+  return l===undefined&&b!==undefined?undefined:l;
+}
+const syURL=(cfg,p)=>String(cfg.u).replace(/\/+$/,'')+'/classtown/'+encodeURIComponent(cfg.r)+p+'.json';
+function syBusy(){const a=document.activeElement;return $('#overlay').classList.contains('show')||$('#clean').classList.contains('show')||(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
+function syBase(){try{const t=localStorage.getItem(SYB);return t?JSON.parse(t):null;}catch(e){return null;}}
+function sySetBase(d){try{localStorage.setItem(SYB,JSON.stringify(d));}catch(e){}}
+function syStatus(st,msg){if(SY){SY.st=st;SY.msg=msg||'';}const el=$('#syncDot');if(el){el.textContent={ok:'☁️',busy:'🔄',err:'⚠️',off:''}[st]||'';el.title=msg||'';}const p=$('#syncMsg');if(p)p.textContent=msg||'';}
+async function syFetchDoc(cfg){
+  let etag=null,r;
+  try{r=await fetch(syURL(cfg,'/doc'),{cache:'no-store',headers:{'X-Firebase-ETag':'true'}});}catch(e){r=await fetch(syURL(cfg,'/doc'),{cache:'no-store'});}
+  if(!r.ok)throw new Error('HTTP '+r.status);etag=r.headers.get('ETag');const v=await r.json();
+  return {doc:v?JSON.parse(v):null,etag:etag};
+}
+async function syPutDoc(cfg,d,etag){
+  const body=JSON.stringify(JSON.stringify(d));let r;
+  if(etag){try{r=await fetch(syURL(cfg,'/doc'),{method:'PUT',body:body,headers:{'if-match':etag}});if(r.status===412)return false;if(r.ok)return true;}catch(e){}}
+  r=await fetch(syURL(cfg,'/doc'),{method:'PUT',body:body});if(!r.ok)throw new Error('HTTP '+r.status);return true;
+}
+function applyDoc(M){
+  const cu=S.cur;S=JSON.parse(JSON.stringify(M));S.cur=cu;fixState();
+  if(!S.classes.find(c=>c.id===S.cur))S.cur=S.classes.length?S.classes[0].id:null;
+  try{store&&store.setItem(KEY,JSON.stringify(S));}catch(e){}
+  renderAll();
+}
+async function syncNow(){
+  const cfg=syGet();if(!SY||!cfg.on||SY.busy||syBusy())return;SY.busy=true;syStatus('busy','同步中…');
+  try{
+    for(let k=0;k<4;k++){
+      const L=docOf(),B=syBase(),{doc:R,etag}=await syFetchDoc(cfg);
+      if(R&&B&&sameJ(L,B)){if(!sameJ(R,B)){applyDoc(R);sySetBase(R);}break;}
+      const M=R?m3(B,L,R):L;
+      if(!R||!sameJ(M,R)){const ok=await syPutDoc(cfg,M,etag);if(!ok)continue;}
+      sySetBase(M);if(!sameJ(M,L))applyDoc(M);break;
+    }
+    syStatus('ok','已連線・資料會自動同步（房間：'+cfg.r+'）');
+  }catch(e){syStatus('err','暫時連不到雲端，資料先存在這台裝置，恢復連線後會自動補上。');}
+  SY.busy=false;
+}
+function syncSoon(){if(!SY)return;SY.dirty=true;}
+/* 照片 */
+async function syPhotoPut(k,v){const cfg=syGet();if(!SY||!cfg.on)return;try{await fetch(syURL(cfg,'/photos/'+k),{method:v?'PUT':'DELETE',body:v?JSON.stringify(v):undefined});}catch(e){}}
+async function syPhotosPull(pushMissing){const cfg=syGet();try{const r=await fetch(syURL(cfg,'/photos'),{cache:'no-store'});if(!r.ok)return;const all=(await r.json())||{};let n=0;
+  Object.keys(all).forEach(k=>{if(all[k]&&PH[k]!==all[k]){const i=k.lastIndexOf('_');setPhotoLocal(k.slice(0,i),k.slice(i+1),all[k]);n++;}});
+  if(pushMissing)for(const k of Object.keys(PH))if(!all[k])await syPhotoPut(k,PH[k]);
+  if(n&&!syBusy())renderView();}catch(e){}}
+function syStart(){
+  if(SY&&SY.t)clearInterval(SY.t);if(SY&&SY.es)try{SY.es.close();}catch(e){}
+  const cfg=syGet();if(!cfg.on||!cfg.u||!cfg.r){SY=null;syStatus('off');return;}
+  SY={busy:false,dirty:true,last:0,t:0,es:null};
+  SY.t=setInterval(()=>{if(!SY)return;const now=Date.now();if((SY.dirty&&now-SY.last>1500)||now-SY.last>12000){if(syBusy())return;SY.dirty=false;SY.last=now;syncNow();}},1000);
+  try{const es=new EventSource(syURL(cfg,'/doc'));es.addEventListener('put',()=>{if(SY)SY.last=0;});SY.es=es;}catch(e){}
+  syPhotosPull(true);syncNow();
+}
+async function syConnect(u,r,join){
+  u=String(u||'').trim();r=String(r||'').trim();
+  if(!/^https:\/\/.+(firebaseio\.com|firebasedatabase\.app)/.test(u)){toast('請輸入 Firebase 資料庫網址（https 開頭，結尾是 firebaseio.com 或 firebasedatabase.app）');return;}
+  if(!/^[A-Za-z0-9_-]{4,40}$/.test(r)){toast('房間代碼請用 4～40 個英文、數字');return;}
+  const cfg={u:u,r:r,on:true};let R=null;
+  try{R=(await syFetchDoc(cfg)).doc;}catch(e){toast('連不到這個資料庫，請檢查網址');return;}
+  const go=mode=>{if(mode==='cloud'){applyDoc(R);sySetBase(R);}else if(mode==='mine'){try{localStorage.removeItem(SYB);}catch(e){}}
+    sySet(cfg);syStart();renderView();toast('☁️ 已連上雲端同步');};
+  if(!R){go('mine');return;}
+  if(join){go('cloud');return;}
+  modal('<h2>☁️ 雲端已經有資料</h2><div>房間「'+esc(r)+'」裡已經有 '+(R.classes||[]).length+' 個班級的資料。要使用哪一份？</div><div class="acts"><button class="btn" data-act="x">取消</button><button class="btn danger" data-act="mine">用這台的資料覆蓋雲端</button><button class="btn pri" data-act="cloud">使用雲端資料</button></div>','',{
+    mine:()=>{(async()=>{try{await syPutDoc(cfg,docOf(),null);sySetBase(docOf());go('none');}catch(e){toast('上傳失敗');}})();},cloud:()=>go('cloud')});
+}
+function syJoinLink(){const c=syGet();return location.href.split('#')[0]+'#ctsync='+encodeURIComponent(c.u)+'|'+encodeURIComponent(c.r);}
+function syncPanelHTML(){
+  const c=syGet();let ru='';try{ru=((JSON.parse(localStorage.getItem('rhythm-town-v1'))||{}).sync||{}).url||'';}catch(e){}
+  const room=c.r||('ct'+Math.random().toString(36).slice(2,8));
+  return '<div class="panel"><h2>☁️ 平板同步</h2><div class="small">讓老師電腦和平板使用同一份資料（名單、座位、點數、金幣、麥田、樂透、照片…），任何一台修改，其他台幾秒內就會更新。需要一個 Firebase 即時資料庫（可以和節奏小鎮用同一個）。</div>'+
+    (c.on?'<div class="row"><b id="syncMsg">'+esc(SY&&SY.msg||'連線中…')+'</b></div><div class="row">資料庫：<code>'+esc(c.u)+'</code>　房間：<b>'+esc(c.r)+'</b></div>'+
+      '<div class="row"><button class="btn pri" data-b="sylink">📋 複製平板連結</button><button class="btn" data-b="synow">🔄 立即同步</button><button class="btn danger" data-b="syoff">中斷同步</button></div>'+
+      '<div class="small">在平板上打開這個連結，就會自動連上同一個房間。知道連結的人都能看到和修改資料（包含學生姓名與照片），請只分享給自己的裝置。</div>'
+    :'<div class="row">Firebase 網址 <input type="text" id="syU" value="'+esc(c.u||ru)+'" placeholder="https://xxxx-default-rtdb.firebaseio.com" style="width:min(420px,100%)"></div><div class="row">房間代碼 <input type="text" id="syR" value="'+esc(room)+'" style="width:160px"><span class="small">每台裝置要用同一個代碼；建議用不好猜的代碼</span></div><div class="row"><button class="btn pri" data-b="syon">☁️ 開始同步</button></div>')+'</div>';
+}
+
 /* ---------- 啟動 ---------- */
 document.querySelector('nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){view=b.dataset.view;selSeat=null;renderView();}});
 $('#classSel').addEventListener('change',e=>{S.cur=e.target.value;selSeat=null;save();renderAll();});
 save();renderAll();
+(()=>{const m=location.hash.match(/ctsync=([^|]+)\|([^&]+)/);if(m){history.replaceState(null,'',location.href.split('#')[0]);syConnect(decodeURIComponent(m[1]),decodeURIComponent(m[2]),true);}else syStart();})();
 idbOpen().then(idbLoad).then(()=>{if(Object.keys(PH).length)renderView();});
 })();
 </script>
