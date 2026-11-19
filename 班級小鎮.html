@@ -66,7 +66,11 @@ main{padding:12px 16px 60px;max-width:1400px;margin:0 auto}
 
 /* room */
 .room{display:flex;flex-direction:column;gap:10px}
-.room.flip{flex-direction:column-reverse}
+.room.rflip{flex-direction:column-reverse}
+.vsw{display:flex;align-items:center;gap:6px;margin:0 0 8px;flex-wrap:wrap;font-weight:800;font-size:14px;color:var(--muted)}
+.vsw button{border:2px solid var(--line);background:#fff;border-radius:999px;padding:5px 14px;font-weight:800;font-size:14px;cursor:pointer;color:var(--ink);display:inline-flex;gap:6px;align-items:baseline}
+.vsw button small{font-weight:600;color:var(--muted);font-size:12px}
+.vsw button.on{background:var(--ink);color:#fff;border-color:var(--ink)}.vsw button.on small{color:#cbd5e1}
 .podium{align-self:center;background:var(--ink);color:#fff;border-radius:10px;padding:5px 46px;font-weight:800;letter-spacing:6px;font-size:14px}
 .groups{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .gcard{border-radius:16px;padding:10px;border:2px solid var(--line);background:#fff}
@@ -454,6 +458,9 @@ function setPhotoLocal(cid,no,data){const k=cid+'_'+no;if(data)PH[k]=data;else d
 
 /* ---------- 預設值 ---------- */
 const DEF_SET={supFree:3,supPen:1,r1:30,r2:60,r3:100,rk1:3,rk2:2,rk3:1,examBonus:10,drawDays:'1,15',termEnd:'',p3:'餅乾 ×1',p4:'隨機吊飾 ×1',p5:'飲料 ×1',p6:'下午茶套組',farmMin:2,nextLesson:true,sc0:10,sc1:4,sc2:6,sc3:8,sc4:10,sc5:12,yield:10,wheatPrice:6,magicMul:2,cardCost:30,privRate:30,irrRate:20,limit:3,penalty:1,limitMsg:'請下課來找老師聊聊 🙂',bGood:1,bSup:1,bClean:1,speed:1,finalRole:'音樂小老師',cleanOn:true,flip:false,sound:true};
+function seatView(){let v=null;try{v=localStorage.getItem('classtown_seatview');}catch(e){}return v==='stu'||v==='tea'?v:(S.settings.flip?'stu':'tea');}
+function setSeatView(v){try{localStorage.setItem('classtown_seatview',v);}catch(e){}}
+document.addEventListener('click',e=>{const b=e.target.closest('#view-class [data-vw]');if(!b)return;setSeatView(b.dataset.vw);renderClass();});
 const DEF_SUP=['直笛','課本','鉛筆盒'];
 const DEF_GAMES=[{icon:'🥁',name:'節奏小鎮',url:'https://gogo3747p.github.io/rhythm-town/'},{icon:'🎵',name:'星韻魔法學院',url:'https://gogo3747p.github.io/choir-pitch/'},{icon:'🪈',name:'直笛守護者',url:'https://gogo3747p.github.io/recorder-guardian/'},{icon:'🃏',name:'音程 UNO',url:'https://gogo3747p.github.io/interval-uno/'}];
 const DEF_CLEAN=[{icon:'🪑',name:'桌椅排整齊'},{icon:'🧹',name:'地板淨空'},{icon:'🗄️',name:'抽屜淨空'}];
@@ -805,7 +812,7 @@ function seatHTML(c,id){
 function renderClass(){
   const c=cur(),el=$('#view-class');
   if(!c){el.innerHTML='<div class="panel">還沒有班級，請到「班級與名單」新增。</div>';return;}
-  const ses=c.session,L=S.settings.limit,nt=openTalks(c).length,flip=S.settings.flip;
+  const ses=c.session,L=S.settings.limit,nt=openTalks(c).length,flip=seatView()==='stu';
   let h='<div class="cwrap"><div class="cmain">';
   h+='<div class="modes">'+MODES.map(m=>'<button class="mode'+(mode===m[0]?' on':'')+'" data-mode="'+m[0]+'">'+m[1]+'</button>').join('')+'<button class="mode rulesbtn" data-tool="rules">📜 規則</button>'+
     '<div class="tools"><button class="btn" data-tool="undo">↩ 復原</button><button class="btn" data-tool="talk">💬 聊聊名單'+(nt?'<span class="badge">'+nt+'</span>':'')+'</button><button class="btn" data-tool="draw">🎲 抽籤</button><button class="btn" data-tool="timer">⏱️ 計時</button><button class="btn" data-tool="clean">🧹 組長檢查</button></div></div>';
@@ -813,7 +820,8 @@ function renderClass(){
   h+='<div class="modetip">'+(mode==='warn'?'點座位記一次警告；滿 '+L+' 次扣 '+S.settings.penalty+' 金幣，並下課找老師聊聊。':M[2])+
     (mode==='swap'?'　<button class="btn sm pri" data-tool="rseat">🎲 隨機分配座位</button> <button class="btn sm" data-tool="avoid">🚫 不同組設定'+((c.avoid||[]).length?'（'+c.avoid.length+'）':'')+'</button>':'')+(mode==='sup'&&ses?'　<button class="btn sm'+(ses.supChecked?' pri':'')+'" data-tool="supdone">'+(ses.supChecked?'✔ 已完成檢查（其他人都有帶）':'完成檢查：其他人都有帶')+'</button>':'')+(!ses&&mode!=='swap'&&mode!=='redeem'?'　<b style="color:#b45309">（先按「▶ 開始上課」才會記錄）</b>':'')+'</div>';
   const gs=flip?[3,2,1]:[1,2,3];
-  h+='<div class="room'+(flip?' flip':'')+'"><div class="groups">'+gs.map(g=>{
+  h+='<div class="vsw"><span>座位表視角</span><button data-vw="stu"'+(flip?' class="on"':'')+'>👀 學生角度<small>看投影畫面</small></button><button data-vw="tea"'+(flip?'':' class="on"')+'>🧑‍🏫 教師角度<small>面對 iPad</small></button></div>';
+  h+='<div class="room'+(flip?' rflip':'')+'"><div class="groups">'+gs.map(g=>{
     let ids=[];for(let i=0;i<9;i++)ids.push(g+'-'+i);if(flip)ids.reverse();
     return '<div class="gcard" style="border-color:'+GC[g][1]+'"><div class="ghead" style="background:'+GC[g][0]+'"><span>第 '+g+' 組</span><span class="gpts"><button data-gpt="'+g+'" data-d="-1" class="neg">−1</button><button data-gpt="'+g+'" data-d="1">+1</button><input type="number" class="gcus" data-gcus="'+g+'" placeholder="自訂" title="輸入分數後按 Enter（可輸入負數）"><b class="gcoin">🪙'+(c.gb[g]||0)+'</b></span></div><div class="seats">'+ids.map(id=>seatHTML(c,id)).join('')+'</div></div>';}).join('')+
     '</div><div class="podium">講台</div></div>';
@@ -1598,7 +1606,7 @@ function renderSettings(){
       '<div class="row"><button class="btn" data-b="gmadd">＋ 新增遊戲</button><button class="btn sm" data-b="gmreset">恢復預設</button></div></div>'+
     '<div class="panel"><h2>🎒 學用品項目</h2><div class="chips">'+S.supplies.map((it,i)=>'<span class="chip">'+esc(it)+' <button class="btn sm danger" data-b="supdel" data-i="'+i+'">×</button></span>').join('')+'</div><div class="row"><input type="text" id="supNew" placeholder="新增項目，例如：直笛" style="width:200px"><button class="btn" data-b="supadd">＋ 新增</button></div></div>'+
     '<div class="panel"><h2>🧹 下課檢查與其他</h2><div class="row">'+chk('cleanOn','下課時進行「小組長檢查」')+'　最後確認的幹部名稱 <input type="text" data-set="finalRole" value="'+esc(s.finalRole)+'" style="width:110px"></div><div class="small">檢查項目可以在檢查畫面按「✏️ 編輯檢查項目」修改。</div>'+
-    '<div class="row">'+chk('flip','座位表上下左右翻轉（講台在上方）')+'　'+chk('sound','音效')+'</div></div>'+
+    '<div class="row">'+chk('sound','音效')+'</div></div>'+
     syncPanelHTML()+'<div class="panel"><h2>💾 備份</h2><div class="small">資料存在這台裝置的這個瀏覽器裡。換裝置或清除瀏覽資料前，請先下載備份檔（含照片）。</div><div class="row"><button class="btn pri" data-b="export">⬇️ 下載備份檔</button><label class="file btn">⬆️ 從備份檔還原<input type="file" accept=".json,application/json" id="importFile"></label></div></div>';
 }
 $('#view-settings').addEventListener('change',e=>{
