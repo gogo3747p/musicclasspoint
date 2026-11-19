@@ -614,11 +614,11 @@ function shopHTML(c){
 function cardsHTML(c){
   const cs=cardsOf(c,fg),k=FS('cardCost'),n=c.gb[fg]||0,own={};cs.filter(x=>x.k==='x').forEach(x=>own[x.cid]=(own[x.cid]||0)+1);
   const pv=cs.filter(x=>x.k==='p').slice().reverse(),ir=cs.filter(x=>x.k==='w'),iu=ir.filter(x=>!x.used).length;
-  const pr=FS('privRate'),wr=FS('irrRate');
-  let h='<div class="panel">'+grpPick()+'<div class="drawbox"><div class="cback big3"><span>✦</span></div><div><div style="font-size:20px;font-weight:900">第 '+fg+' 組　🪙 '+n+'</div><div class="small">每抽一次 🪙'+k+'。約 '+wr+'% 魔法灌溉卡、'+pr+'% 課堂特權卡、'+Math.max(0,100-pr-wr)+'% 魔法作物卡。稀有度：普通 70%、稀有 25%、傳說 5%。</div>'+
+  const wr=FS('irrRate');
+  let h='<div class="panel">'+grpPick()+'<div class="drawbox"><div class="cback big3"><span>✦</span></div><div><div style="font-size:20px;font-weight:900">第 '+fg+' 組　🪙 '+n+'</div><div class="small">每抽一次 🪙'+k+'。約 '+wr+'% 魔法灌溉卡、'+Math.max(0,100-wr)+'% 魔法作物卡。（課堂特權卡要用個人點數兌換）稀有度：普通 70%、稀有 25%、傳說 5%。</div>'+
     '<button class="btn pri" data-draw="1" style="font-size:20px;margin-top:8px"'+(n>=k?'':' disabled')+'>🃏 抽一張（🪙'+k+'）</button></div></div></div>';
   h+='<div class="panel"><h2>💧✨ 魔法灌溉卡　<span class="small">可用 '+iu+' 張・已用 '+(ir.length-iu)+' 張</span></h2><div class="irrbox"><img src="'+WHEATIMG+'"><div>對已經灑播的田使用，這塊田會長成<b>魔法稻穗</b>，收成時小麥 ×'+FS('magicMul')+'（做成產品或賣掉都是兩倍金幣）。<br>使用方法：到「🌾 魔法麥田」，在第 '+fg+' 組的田旁邊按 <b>💧✨</b>。'+(iu?'<div class="row"><button class="btn pri" data-ftab="farm">去魔法麥田使用</button></div>':'')+'</div></div></div>';
-  h+='<div class="panel"><h2>🎫 課堂特權卡</h2>'+(pv.length?'<div class="pcards">'+pv.map(x=>{const p=x.d||{};return '<div class="pcard'+(x.used?' used':'')+'" style="--rc:'+RAR[p.r||'N'].c+'"><div class="pi">'+esc(p.icon||'🎫')+'</div><b>'+esc(p.n||'')+'</b><span class="small">'+RAR[p.r||'N'].t+'</span>'+(x.used?'<span class="small">✔ 已使用</span>':'<button class="btn sm" data-use="'+x.id+'">使用</button>')+'</div>';}).join('')+'</div>':'<div class="small">還沒有特權卡，抽卡試試看！</div>')+'</div>';
+  if(pv.length)h+='<div class="panel"><h2>🎫 以前抽到的特權卡</h2>'+(pv.length?'<div class="pcards">'+pv.map(x=>{const p=x.d||{};return '<div class="pcard'+(x.used?' used':'')+'" style="--rc:'+RAR[p.r||'N'].c+'"><div class="pi">'+esc(p.icon||'🎫')+'</div><b>'+esc(p.n||'')+'</b><span class="small">'+RAR[p.r||'N'].t+'</span>'+(x.used?'<span class="small">✔ 已使用</span>':'<button class="btn sm" data-use="'+x.id+'">使用</button>')+'</div>';}).join('')+'</div>':'<div class="small">還沒有特權卡，抽卡試試看！</div>')+'</div>';
   const L=cropList(),got=L.filter(x=>own[x.id]).length;
   h+='<div class="panel"><h2>🌱 魔法作物圖鑑　<span class="small">'+got+' / '+L.length+'</span></h2><div class="dex">'+L.map(x=>own[x.id]?'<div class="dc" style="--rc:'+(RAR[x.r]||RAR.N).c+'" title="'+esc(x.d||'')+'"><img src="'+cropImg(x)+'"><b>'+esc(x.n)+'</b><span class="small" style="color:'+(RAR[x.r]||RAR.N).c+'">'+(RAR[x.r]||RAR.N).t+'</span>'+(own[x.id]>1?'<em>×'+own[x.id]+'</em>':'')+'</div>':'<div class="dc lock"><img src="'+cropImg(x)+'"><b>？？？</b></div>').join('')+'</div><div class="small" style="margin-top:8px">老師可以到「設定 → 魔法卡」新增更多魔法作物卡（上傳圖片即可）。</div></div>';
   return h;
@@ -626,7 +626,7 @@ function cardsHTML(c){
 function pickW(arr,wf){const t=arr.reduce((a,x)=>a+wf(x),0);let r=Math.random()*t;for(const x of arr){r-=wf(x);if(r<0)return x;}return arr[arr.length-1];}
 function drawCard(c,g){
   const k=FS('cardCost');if((c.gb[g]||0)<k){toast('金幣不夠');return;}
-  const priv=(S.privCards||[]).filter(x=>x.n),crops=cropList(),roll=Math.random()*100,wr=FS('irrRate'),pr=FS('privRate');let card;
+  const priv=[],crops=cropList(),roll=Math.random()*100,wr=FS('irrRate'),pr=0;let card;
   if(roll<wr||(!crops.length&&!priv.length))card={id:uid(),k:'w',at:Date.now(),used:false};
   else if((roll<wr+pr&&priv.length)||!crops.length){const p=pickW(priv,x=>(RAR[x.r]||RAR.N).w);card={id:uid(),k:'p',d:{icon:p.icon,n:p.n,r:p.r},at:Date.now(),used:false};}
   else{const x=pickW(crops,x=>(RAR[x.r]||RAR.N).w);card={id:uid(),k:'x',cid:x.id,at:Date.now()};}
@@ -1446,7 +1446,7 @@ function showRules(){
     '<h2 class="rh2">🪙 小組金幣可以做什麼</h2><div class="rlot g">'+
       '<div><b>🌾 種魔法小麥</b><span>灑播 🪙'+t.sc0+'，一輪共 🪙'+[0,1,2,3,4,5].reduce((a,i)=>a+(+t['sc'+i]),0)+'，收成 🌾'+t.yield+' 把</span></div>'+
       '<div><b>🧁 做成產品賣掉</b><span>小麥做成魔法產品，賣得更多金幣</span></div>'+
-      '<div><b>🃏 抽魔法卡</b><span>每次 🪙'+t.cardCost+'：魔法灌溉卡、課堂特權卡、魔法作物卡</span></div>'+
+      '<div><b>🃏 抽魔法卡</b><span>每次 🪙'+t.cardCost+'：魔法灌溉卡、魔法作物卡</span></div>'+
       '<div><b>💧✨ 魔法灌溉卡</b><span>長成魔法稻穗，收成 ×'+t.magicMul+'</span></div></div></div>';
   const o=$('#clean');o.innerHTML='<div class="dcard rules">'+h+'</div>';o.classList.add('show');o.dataset.rules='1';
 }
@@ -1572,12 +1572,10 @@ function renderSettings(){
     '<div class="panel"><h2>🌾 魔法麥田</h2><div class="row">每個時期至少等 '+num('farmMin',0,30)+' 分鐘　'+chk('nextLesson','「灌漿成熟期」要等到下一節課（這節課灑播、下節課收成）')+'</div>'+
       '<div class="row">'+WHEAT_ST.slice(0,6).map((x,i)=>x[0]+' 🪙'+num('sc'+i,0,200)).join('　')+'</div>'+
       '<div class="row">每次收成 🌾'+num('yield',1,100)+' 把　魔法稻穗收成 ×'+num('magicMul',1,10)+'　小麥直接賣每把 🪙'+num('wheatPrice',0,100)+'</div><div class="small">預設一輪花 🪙50，收成 10 把：直接賣 🪙60，做成產品最多約 🪙116；魔法稻穗加倍。</div></div>'+
-    '<div class="panel"><h2>🃏 魔法卡</h2><div class="row">每抽一次 🪙'+num('cardCost',1,500)+'　魔法灌溉卡機率 '+num('irrRate',0,100)+' %　課堂特權卡機率 '+num('privRate',0,100)+' %（其餘是魔法作物卡）</div>'+
+    '<div class="panel"><h2>🃏 魔法卡</h2><div class="row">每抽一次 🪙'+num('cardCost',1,500)+'　魔法灌溉卡機率 '+num('irrRate',0,100)+' %（其餘是魔法作物卡）</div>'+
       '<h3>魔法作物卡</h3>'+S.cropCards.map((x,i)=>'<div class="row"><img src="'+cropImg(x)+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px"><input type="text" value="'+esc(x.n)+'" data-cc="'+i+'" data-f="n" style="width:140px" placeholder="名稱"><input type="text" value="'+esc(x.d||'')+'" data-cc="'+i+'" data-f="d" style="width:200px" placeholder="說明"><select class="inp" data-cc="'+i+'" data-f="r">'+['N','SR','SSR'].map(r=>'<option value="'+r+'"'+(x.r===r?' selected':'')+'>'+RAR[r].t+'</option>').join('')+'</select><button class="btn sm danger" data-b="ccdel" data-i="'+i+'">刪除</button></div>').join('')+
       '<div class="row"><label class="file btn pri">＋ 上傳圖片新增作物卡<input type="file" id="ccNew" accept="image/*" multiple></label><button class="btn sm" data-b="ccreset">補回預設作物卡</button><span class="small">檔名會當成作物名稱，可以一次選多張。</span></div>'+
-      '<h3>課堂特權卡</h3>'+
-      S.privCards.map((p,i)=>'<div class="row"><input type="text" value="'+esc(p.icon)+'" data-pc="'+i+'" data-f="icon" style="width:52px;text-align:center"><input type="text" value="'+esc(p.n)+'" data-pc="'+i+'" data-f="n" style="width:220px"><select class="inp" data-pc="'+i+'" data-f="r">'+['N','SR','SSR'].map(r=>'<option value="'+r+'"'+(p.r===r?' selected':'')+'>'+RAR[r].t+'</option>').join('')+'</select><button class="btn sm danger" data-b="pcdel" data-i="'+i+'">刪除</button></div>').join('')+
-      '<div class="row"><button class="btn" data-b="pcadd">＋ 新增特權卡</button><button class="btn sm" data-b="pcreset">恢復預設</button></div></div>'+
+      '</div>'+
     '<div class="panel"><h2>🎮 遊戲連結</h2><div class="small">上方「🎮 遊戲」按鈕會列出這些遊戲。網址要以 https:// 開頭。</div>'+
       S.games.map((g,i)=>'<div class="row"><input type="text" value="'+esc(g.icon)+'" data-gm="'+i+'" data-f="icon" style="width:52px;text-align:center"><input type="text" value="'+esc(g.name)+'" data-gm="'+i+'" data-f="name" style="width:150px" placeholder="遊戲名稱"><input type="text" value="'+esc(g.url)+'" data-gm="'+i+'" data-f="url" style="width:min(420px,100%)" placeholder="https://..."><button class="btn sm danger" data-b="gmdel" data-i="'+i+'">刪除</button></div>').join('')+
       '<div class="row"><button class="btn" data-b="gmadd">＋ 新增遊戲</button><button class="btn sm" data-b="gmreset">恢復預設</button></div></div>'+
