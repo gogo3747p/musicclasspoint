@@ -979,13 +979,14 @@ function luckyStar(c,next){
 }
 function activeGroups(c){const sm=seatOf(c);return GROUPS.filter(g=>c.students.some(s=>sm[s.no]&&+sm[s.no][0]===g));}
 function cleanPassed(cl,g){return S.cleanItems.every((x,i)=>cl.done[g+'_'+i]);}
+function denseRank(act,val){const vs=[...new Set(act.map(val))].sort((x,y)=>y-x),r={};act.forEach(g=>{const k=vs.indexOf(val(g))+1;if(k<=3)r[g]=k;});return r;}
 function settle(){
   const c=cur(),ses=c&&c.session;if(!ses)return;const act=activeGroups(c),pts=[+S.settings.rk1,+S.settings.rk2,+S.settings.rk3];
-  let order=act.slice().sort((a,b)=>(ses.gAdd[b]||0)-(ses.gAdd[a]||0));
-  const draw=()=>{modal('<h2>🏅 本節分組名次</h2><div class="small">依這節課各組加分自動排好名次，可以點組別重新排序。每位出席組員都會加個人 ⭐（小組金幣也一起加）。</div><div class="rkg">'+act.map(g=>{const r=order.indexOf(g);return '<button class="rkb'+(r>=0?' on':'')+'" data-keep="pk" data-g="'+g+'" style="--gc:'+GC[g][1]+';background:'+GC[g][0]+'"><b>第 '+g+' 組</b><span>本節 🪙+'+(ses.gAdd[g]||0)+'</span><span>'+(r>=0?'第 '+(r+1)+' 名　每人 ⭐+'+pts[r]:'—')+'</span></button>';}).join('')+'</div>'+
-    '<div class="acts"><button class="btn" data-keep="clr">重新點選</button><button class="btn" data-keep="skip">不加名次分</button><button class="btn pri" data-keep="ok"'+(order.length?'':' disabled')+'>確定並下課結算</button></div>','wide',{__lock:true,
-    pk:b=>{const g=+b.dataset.g;if(order.includes(g))order=order.filter(x=>x!==g);else if(order.length<3)order.push(g);draw();},clr:()=>{order=[];draw();},
-    skip:()=>{closeModal();settleCore([]);},ok:()=>{closeModal();settleCore(order);}});};
+  let rk=denseRank(act,g=>ses.gAdd[g]||0);
+  const draw=()=>{const any=act.some(g=>rk[g]);modal('<h2>🏅 本節分組名次</h2><div class="small">依這節課各組加分自動排好名次，<b>同分的組別同一個名次</b>（例如第 2、3 組同分，兩組都是第 2 名）。點組別可以手動切換名次。每位出席組員都會加個人 ⭐（小組金幣也一起加）。</div><div class="rkg">'+act.map(g=>{const r=rk[g];return '<button class="rkb'+(r?' on':'')+'" data-keep="pk" data-g="'+g+'" style="--gc:'+GC[g][1]+';background:'+GC[g][0]+'"><b>第 '+g+' 組</b><span>本節 🪙+'+(ses.gAdd[g]||0)+'</span><span>'+(r?'第 '+r+' 名　每人 ⭐+'+pts[r-1]:'—')+'</span></button>';}).join('')+'</div>'+
+    '<div class="acts"><button class="btn" data-keep="auto">依分數自動排</button><button class="btn" data-keep="skip">不加名次分</button><button class="btn pri" data-keep="ok"'+(any?'':' disabled')+'>確定並下課結算</button></div>','wide',{__lock:true,
+    pk:b=>{const g=+b.dataset.g,r=rk[g]||0;if(r>=3)delete rk[g];else rk[g]=r+1;draw();},auto:()=>{rk=denseRank(act,g=>ses.gAdd[g]||0);draw();},
+    skip:()=>{closeModal();settleCore({});},ok:()=>{closeModal();settleCore(rk);}});};
   draw();
 }
 function settleCore(rank){
@@ -1002,7 +1003,8 @@ function settleCore(rank){
     earn[g]+=d+(ses.bonus[s.no]||0);
   });
   const rkpts=[+set.rk1,+set.rk2,+set.rk3],rkInfo=[];
-  (rank||[]).forEach((g,r)=>{let n=0;c.students.forEach(s=>{if(sm[s.no]&&+sm[s.no][0]===g&&!ses.absent[s.no]){give(c,s.no,rkpts[r]);n++;}});earn[g]+=rkpts[r]*n;rkInfo.push('第 '+(r+1)+' 名 第'+g+'組（每人 ⭐+'+rkpts[r]+'）');});
+  let rmap=rank||{};if(Array.isArray(rmap)){const o={};rmap.forEach((g,i)=>o[g]=i+1);rmap=o;}
+  act.filter(g=>rmap[g]>=1&&rmap[g]<=3).sort((a,b)=>rmap[a]-rmap[b]||a-b).forEach(g=>{const r=rmap[g]-1;let n=0;c.students.forEach(s=>{if(sm[s.no]&&+sm[s.no][0]===g&&!ses.absent[s.no]){give(c,s.no,rkpts[r]);n++;}});earn[g]+=rkpts[r]*n;rkInfo.push('第 '+(r+1)+' 名 第'+g+'組（每人 ⭐+'+rkpts[r]+'）');});
   if(rkInfo.length)logR(c,0,'名次加分',0,rkInfo.join('、'));
   const supPen=[];if(+set.supPen>0)Object.keys(ses.miss).map(Number).forEach(no=>{if(!(ses.miss[no]&&ses.miss[no].length)||!stu(c,no))return;const k=missCount(c,no)+1;if(k>+set.supFree){give(c,no,-set.supPen);supPen.push(no+' 號（第 '+k+' 次）');logR(c,no,'未帶學用品扣分',0,'第 '+k+' 次未帶 −'+set.supPen);}});
   upG=0;
