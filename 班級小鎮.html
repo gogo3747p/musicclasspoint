@@ -385,7 +385,13 @@ body.vclass .legend,body.vclass .modetip{color:#334155}
 .ritem{border-radius:22px;padding:18px;text-align:center;color:#1e293b;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:0 8px 20px rgba(0,0,0,.06)}
 .ritem.c1{background:linear-gradient(#d1fae5,#a7f3d0)}.ritem.c2{background:linear-gradient(#dbeafe,#bfdbfe)}.ritem.c3{background:linear-gradient(#fef9c3,#fde68a)}
 .ric{font-size:46px}.ritem b{font-size:22px}.rcost{font-size:30px;font-weight:900;color:#1e3a8a}.ritem span{font-size:14px;color:#475569}
-.rfc{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}@media(max-width:900px){.rfc{grid-template-columns:repeat(4,1fr)}}
+.fcgen{aspect-ratio:280/407;width:100%;border-radius:10px;background:linear-gradient(160deg,#fff7d6,#fcd34d 60%,#f59e0b);border:3px solid #b45309;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px;box-sizing:border-box;text-align:center;color:#78350f}
+.fcgen i{font-style:normal;font-size:2.6em;line-height:1}.fcgen b{font-size:1.15em}.fcgen small{font-size:.8em;color:#92400e}
+.fci .fcgen{width:96px;font-size:12px}.cfront.fcf .fcgen{height:100%;font-size:20px}
+.fcth{display:inline-block;width:44px}.fcth img,.fcth .fcgen{width:44px;border-radius:6px;font-size:5px;border-width:1px;padding:2px}
+.rfc div.fcgen{background:linear-gradient(160deg,#fff7d6,#fcd34d 60%,#f59e0b);padding:6px;font-size:11px;color:#78350f}
+.rfc em{display:block;font-style:normal;color:#b45309;font-weight:800}
+.rfc{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
 .rfc div{background:#fff;border-radius:14px;padding:6px;text-align:center;font-size:12px;color:#475569}.rfc img{width:100%;border-radius:10px}.rfc b{display:block;font-size:14px;color:#1e293b}
 .rlot{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.rlot div{background:#fff;border:2px solid #fcd34d;border-radius:16px;padding:10px;text-align:center}.rlot b{display:block;color:#a16207}.rlot span{font-size:17px;font-weight:800}
 .rlot.g div{border-color:#c7d2fe}.rlot.g b{color:#1e3a8a}.rlot.g span{font-size:14px;font-weight:600;color:#475569}
@@ -1305,6 +1311,12 @@ const FCIMG=["data:image/webp;base64,UklGRsAlAABXRUJQVlA4ILQlAACwkwCdASoYAZcBPmE
 /* ---------- 個人點數：點歌 30・抽功能卡 60・樂透 100 ---------- */
 const FCARDS=[['回答卡','有優先回答的權利'],['指定卡','被點到時，可以指定其他同學回答或表演'],['幫助卡','請同學一起回答，或找一個夥伴一起演奏'],['兩倍卡','本次回答加分兩倍'],
   ['防禦卡','抵銷別人對你的攻擊或點名'],['跳過卡','被點到時可以跳過'],['延遲卡','被點到演奏或演唱時，可以延後演出'],['表演卡','有優先表演的權利']];
+const DEF_FC=()=>FCARDS.map((x,i)=>({id:'f'+i,n:x[0],d:x[1],w:10,bi:i})).concat([{id:'fw1',n:'個人免寫卡',d:'可以免寫一次個人作業或學習單',w:15,icon:'📝'},{id:'fw2',n:'小組免寫卡',d:'全組可以免寫一次小組作業或學習單',w:5,icon:'👥'}]);
+function fcAll(){if(!Array.isArray(S.fcards))S.fcards=DEF_FC();return S.fcards;}
+function fcList(){return fcAll().filter(x=>x&&x.n&&(+x.w||0)>0);}
+function fcPct(x){const t=fcList().reduce((a,y)=>a+(+y.w||0),0);return t?Math.round((+x.w||0)/t*1000)/10:0;}
+function fcDef(x){if(!x)return {n:'?',d:''};const id=x.fid||(x.i!=null?'f'+x.i:'');return fcAll().find(y=>y.id===id)||(x.i!=null&&FCARDS[x.i]?{n:FCARDS[x.i][0],d:FCARDS[x.i][1],bi:x.i}:{n:x.n||'功能卡',d:'',icon:'🃏'});}
+function fcVis(f){if(f.img)return '<img src="'+f.img+'">';if(f.bi!=null&&FCIMG[f.bi])return '<img src="'+FCIMG[f.bi]+'">';return '<div class="fcgen"><i>'+esc(f.icon||'🃏')+'</i><b>'+esc(f.n)+'</b><small>'+esc(f.d||'')+'</small></div>';}
 const RW3=()=>[{k:'song',icon:'🎵',n:'點歌卡',cost:+S.settings.r1},{k:'card',icon:'🃏',n:'抽功能卡',cost:+S.settings.r2},{k:'lotto',icon:'🎰',n:'樂透一張',cost:+S.settings.r3}];
 const ptsOf=(c,no)=>(c.pts&&c.pts[no])||0;
 function ptsAdd(c,no,d){c.pts=c.pts||{};const a=c.pts[no]||0,b=Math.max(0,a+d);c.pts[no]=b;return b-a;}
@@ -1317,7 +1329,7 @@ function redeemModal(c,no){
   let h='<div class="rdhead">'+(ph?'<img src="'+ph+'">':'<span class="av" style="width:70px;height:70px;font-size:28px">'+no+'</span>')+'<div><h2 style="margin:0">'+no+' 號 '+esc(s.name)+'</h2><div class="rdpts">⭐ '+p+' <small>點</small></div></div></div>';
   h+='<div class="rdopts">'+RW3().map(o=>'<button class="rdo'+(p>=o.cost?' ok':'')+'" data-keep="r_'+o.k+'"'+(p>=o.cost?'':' disabled')+'><span class="ri">'+o.icon+'</span><b>'+o.n+'</b><span>⭐ '+o.cost+'</span>'+(p>=o.cost?'<em>可以兌換</em>':'<em>還差 '+(o.cost-p)+'</em>')+'</button>').join('')+'</div>';
   h+='<div class="small" style="margin-top:6px">兌換會扣掉點數。也可以先存著，存到 '+S.settings.r3+' 點換樂透。</div>';
-  if(fc.length)h+='<div class="rdsec">🃏 手上的功能卡</div><div class="fcl">'+fc.map(x=>'<div class="fci"><img src="'+FCIMG[x.i]+'"><button class="btn sm" data-keep="usefc" data-id="'+x.id+'">使用</button></div>').join('')+'</div>';
+  if(fc.length)h+='<div class="rdsec">🃏 手上的功能卡</div><div class="fcl">'+fc.map(x=>'<div class="fci">'+fcVis(fcDef(x))+'<button class="btn sm" data-keep="usefc" data-id="'+x.id+'">使用</button></div>').join('')+'</div>';
   if(tk.length)h+='<div class="rdsec">🎰 樂透</div>'+tk.map(t=>'<div class="tkr">'+ballsHTML(t.nums,null,true)+(t.win?' <b class="win">🎉 中 '+t.win.k+' 個號碼：'+esc(t.win.prize)+'</b>':'<span class="small">'+(t.nums&&t.nums.length===6?'等待開獎':'還沒填號碼')+'</span>')+'<button class="btn sm" data-keep="tkedit" data-id="'+t.id+'">'+(t.nums&&t.nums.length===6?'改號碼':'填號碼')+'</button></div>').join('');
   h+='<div class="rdadj">老師調整點數：<button class="btn sm" data-keep="adj" data-d="-1">−1</button><button class="btn sm" data-keep="adj" data-d="1">+1</button><button class="btn sm" data-keep="adj" data-d="5">+5</button></div>';
   h+='<div class="acts"><button class="btn pri" data-act="x">先存著／關閉</button></div>';
@@ -1325,13 +1337,15 @@ function redeemModal(c,no){
     r_song:()=>confirmBox('兌換點歌卡？',no+' 號 '+esc(s.name)+' 扣 ⭐'+S.settings.r1+'，加入「點歌名單」。','兌換',()=>{ptsAdd(c,no,-S.settings.r1);c.songQ=c.songQ||[];c.songQ.push({id:uid(),no:no,at:Date.now(),done:false});logR(c,no,'點歌卡',+S.settings.r1);save();renderClass();fanfare();toast('🎵 '+no+' 號換到點歌卡！');redeemModal(c,no);}),
     r_card:()=>confirmBox('抽一張功能卡？',no+' 號 '+esc(s.name)+' 扣 ⭐'+S.settings.r2+'。','抽卡',()=>drawFC(c,no)),
     r_lotto:()=>confirmBox('兌換樂透一張？',no+' 號 '+esc(s.name)+' 扣 ⭐'+S.settings.r3+'。接著可以把紙本單子上的 6 個號碼輸入進來。','兌換',()=>{ptsAdd(c,no,-S.settings.r3);c.lotto=c.lotto||[];const t={id:uid(),no:no,nums:[],at:Date.now()};c.lotto.push(t);logR(c,no,'樂透',+S.settings.r3);save();renderClass();fanfare();pickNums(c,t);}),
-    usefc:b=>{const x=fcOf(c,no).find(y=>y.id===b.dataset.id);if(x){x.used=true;x.usedAt=Date.now();logR(c,no,'使用'+FCARDS[x.i][0],0);save();renderClass();toast('已使用「'+FCARDS[x.i][0]+'」');redeemModal(c,no);}},
+    usefc:b=>{const x=fcOf(c,no).find(y=>y.id===b.dataset.id);if(x){x.used=true;x.usedAt=Date.now();logR(c,no,'使用'+fcDef(x).n,0);save();renderClass();toast('已使用「'+fcDef(x).n+'」');redeemModal(c,no);}},
     tkedit:b=>{const t=(c.lotto||[]).find(y=>y.id===b.dataset.id);if(t)pickNums(c,t);},
     adj:b=>{ptsAdd(c,no,+b.dataset.d);save();renderClass();redeemModal(c,no);}});
 }
 function drawFC(c,no){
-  ptsAdd(c,no,-S.settings.r2);const i=Math.floor(Math.random()*FCARDS.length);fcOf(c,no).push({id:uid(),i:i,at:Date.now(),used:false});logR(c,no,'功能卡',+S.settings.r2,FCARDS[i][0]);save();renderClass();
-  modal('<div class="flip"><div class="fin"><div class="cback"><span>♪</span></div><div class="cfront fcf" style="--rc:#f59e0b"><img src="'+FCIMG[i]+'"></div></div></div><h2>'+no+' 號抽到「'+FCARDS[i][0]+'」！</h2><div>'+esc(FCARDS[i][1])+'</div><div class="acts"><button class="btn pri" data-act="x">好</button></div>');
+  const L=fcList();if(!L.length){toast('還沒有設定功能卡');return;}
+  let r=Math.random()*L.reduce((t,y)=>t+(+y.w||0),0),f=L[L.length-1];for(const y of L){r-=(+y.w||0);if(r<0){f=y;break;}}
+  ptsAdd(c,no,-S.settings.r2);fcOf(c,no).push({id:uid(),fid:f.id,n:f.n,at:Date.now(),used:false});logR(c,no,'功能卡',+S.settings.r2,f.n);save();renderClass();
+  modal('<div class="flip"><div class="fin"><div class="cback"><span>♪</span></div><div class="cfront fcf" style="--rc:#f59e0b">'+fcVis(f)+'</div></div></div><h2>'+no+' 號抽到「'+esc(f.n)+'」！</h2><div>'+esc(f.d||'')+'</div><div class="acts"><button class="btn pri" data-act="x">好</button></div>');
   setTimeout(()=>{const f=document.querySelector('#overlay .flip');if(f)f.classList.add('go');fanfare();},350);
 }
 /* 樂透 */
@@ -1441,7 +1455,7 @@ function showRules(){
       '<div class="ritem c1"><div class="ric">🎵</div><b>點歌卡</b><div class="rcost">⭐ '+t.r1+'</div><span>下課前播一首自己點的歌</span></div>'+
       '<div class="ritem c2"><div class="ric">🃏</div><b>抽功能卡</b><div class="rcost">⭐ '+t.r2+'</div><span>隨機抽一張課堂功能卡</span></div>'+
       '<div class="ritem c3"><div class="ric">🎰</div><b>樂透一張</b><div class="rcost">⭐ '+t.r3+'</div><span>每月 '+esc(t.drawDays)+' 號開獎，可以對獎到期末</span></div></div>'+
-    '<h2 class="rh2">🃏 功能卡（抽到其中一張）</h2><div class="rfc">'+FCARDS.map((x,i)=>'<div><img src="'+FCIMG[i]+'"><b>'+x[0]+'</b><span>'+esc(x[1])+'</span></div>').join('')+'</div>'+
+    '<h2 class="rh2">🃏 功能卡（抽到其中一張）</h2><div class="rfc">'+fcList().map(x=>'<div>'+fcVis(x)+'<b>'+esc(x.n)+'</b><span>'+esc(x.d||'')+'</span><em>機率 '+fcPct(x)+'%</em></div>').join('')+'</div>'+
     '<h2 class="rh2">🎰 樂透獎品（號碼 1～49 開出 6 個）</h2><div class="rlot">'+[3,4,5,6].map(k=>'<div><b>對中 '+k+' 個</b><span>'+esc(t['p'+k])+'</span></div>').join('')+'</div>'+
     '<h2 class="rh2">🪙 小組金幣可以做什麼</h2><div class="rlot g">'+
       '<div><b>🌾 種魔法小麥</b><span>灑播 🪙'+t.sc0+'，一輪共 🪙'+[0,1,2,3,4,5].reduce((a,i)=>a+(+t['sc'+i]),0)+'，收成 🌾'+t.yield+' 把</span></div>'+
@@ -1572,6 +1586,9 @@ function renderSettings(){
     '<div class="panel"><h2>🌾 魔法麥田</h2><div class="row">每個時期至少等 '+num('farmMin',0,30)+' 分鐘　'+chk('nextLesson','「灌漿成熟期」要等到下一節課（這節課灑播、下節課收成）')+'</div>'+
       '<div class="row">'+WHEAT_ST.slice(0,6).map((x,i)=>x[0]+' 🪙'+num('sc'+i,0,200)).join('　')+'</div>'+
       '<div class="row">每次收成 🌾'+num('yield',1,100)+' 把　魔法稻穗收成 ×'+num('magicMul',1,10)+'　小麥直接賣每把 🪙'+num('wheatPrice',0,100)+'</div><div class="small">預設一輪花 🪙50，收成 10 把：直接賣 🪙60，做成產品最多約 🪙116；魔法稻穗加倍。</div></div>'+
+    '<div class="panel"><h2>🃏 功能卡（個人點數 ⭐'+S.settings.r2+' 抽一張）</h2><div class="small">「機率」填數字就好，會依比例換算成百分比（全部加起來不用剛好 100）。填 0 就不會被抽到。</div>'+
+      fcAll().map((x,i)=>'<div class="row fcrow"><span class="fcth">'+fcVis(x)+'</span>'+(x.img||x.bi!=null?'':'<input type="text" value="'+esc(x.icon||'')+'" data-fx="'+i+'" data-f="icon" style="width:46px;text-align:center" title="卡片上的符號">')+'<input type="text" value="'+esc(x.n)+'" data-fx="'+i+'" data-f="n" style="width:120px" placeholder="名稱"><input type="text" value="'+esc(x.d||'')+'" data-fx="'+i+'" data-f="d" style="width:230px" placeholder="說明"><span>機率 <input type="number" min="0" max="999" value="'+(+x.w||0)+'" data-fx="'+i+'" data-f="w" style="width:62px"> <b class="small">'+fcPct(x)+'%</b></span><label class="file btn sm">換圖片<input type="file" accept="image/*" data-fximg="'+i+'"></label><button class="btn sm danger" data-b="fcdel" data-i="'+i+'">刪除</button></div>').join('')+
+      '<div class="row"><button class="btn pri" data-b="fcadd">＋ 新增功能卡</button><button class="btn sm" data-b="fcreset">補回預設卡</button><span class="small">新增後可以上傳圖片；沒有圖片會自動做成文字卡。</span></div></div>'+
     '<div class="panel"><h2>🃏 魔法卡</h2><div class="row">每抽一次 🪙'+num('cardCost',1,500)+'　魔法灌溉卡機率 '+num('irrRate',0,100)+' %（其餘是魔法作物卡）</div>'+
       '<h3>魔法作物卡</h3>'+S.cropCards.map((x,i)=>'<div class="row"><img src="'+cropImg(x)+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px"><input type="text" value="'+esc(x.n)+'" data-cc="'+i+'" data-f="n" style="width:140px" placeholder="名稱"><input type="text" value="'+esc(x.d||'')+'" data-cc="'+i+'" data-f="d" style="width:200px" placeholder="說明"><select class="inp" data-cc="'+i+'" data-f="r">'+['N','SR','SSR'].map(r=>'<option value="'+r+'"'+(x.r===r?' selected':'')+'>'+RAR[r].t+'</option>').join('')+'</select><button class="btn sm danger" data-b="ccdel" data-i="'+i+'">刪除</button></div>').join('')+
       '<div class="row"><label class="file btn pri">＋ 上傳圖片新增作物卡<input type="file" id="ccNew" accept="image/*" multiple></label><button class="btn sm" data-b="ccreset">補回預設作物卡</button><span class="small">檔名會當成作物名稱，可以一次選多張。</span></div>'+
@@ -1587,6 +1604,8 @@ function renderSettings(){
 $('#view-settings').addEventListener('change',e=>{
   const t=e.target,k=t.dataset.set;
   if(t.id==='ccNew'&&t.files.length){(async()=>{for(const f of Array.from(t.files)){try{const img=await shrinkImg(f,420);S.cropCards.push({id:uid(),n:f.name.replace(/\.[^.]+$/,'').slice(0,12),d:'',r:'N',img:img});}catch(e){}}save();renderSettings();toast('已新增魔法作物卡');})();return;}
+  if(t.dataset.fximg!=null&&t.files[0]){const x=S.fcards[+t.dataset.fximg];shrinkImg(t.files[0],420).then(img=>{if(x){x.img=img;delete x.bi;save();renderSettings();toast('已更換圖片');}});return;}
+  if(t.dataset.fx!=null){const x=S.fcards[+t.dataset.fx];if(x){const f=t.dataset.f;if(f==='w'){const v=parseFloat(t.value);x.w=isNaN(v)?0:Math.max(0,Math.min(999,v));}else if(f==='n'){x.n=t.value.trim()||x.n;}else x[f]=t.value.trim();save();renderSettings();}return;}
   if(t.dataset.cc!=null){const x=S.cropCards[+t.dataset.cc];if(x){x[t.dataset.f]=t.value.trim();save();}return;}
   if(t.dataset.pc!=null){const p=S.privCards[+t.dataset.pc];if(p){p[t.dataset.f]=t.value.trim()||p[t.dataset.f];save();}return;}
   if(t.dataset.gm!=null){const g=S.games[+t.dataset.gm];if(g){let v=t.value.trim();if(t.dataset.f==='url'&&v&&!/^https?:\/\//i.test(v))v='https://'+v;g[t.dataset.f]=v;save();if(t.dataset.f==='url')t.value=v;}return;}
@@ -1599,6 +1618,9 @@ $('#view-settings').addEventListener('click',e=>{
   const b=e.target.closest('[data-b]');if(!b)return;const a=b.dataset.b;
   if(a==='ccdel'){confirmBox('刪除這張作物卡？','已經抽到的同學圖鑑也會看不到這張。','刪除',()=>{S.cropCards.splice(+b.dataset.i,1);save();renderSettings();},true);return;}
   if(a==='ccreset'){S.cropCards=S.cropCards.filter(x=>x.img).concat(DEF_CROPS.filter(d=>!S.cropCards.some(x=>x.id===d.id)).map(x=>Object.assign({},x)));save();renderSettings();return;}
+  if(a==='fcadd'){S.fcards.push({id:uid(),n:'新功能卡',d:'',w:10,icon:'🃏'});save();renderSettings();return;}
+  if(a==='fcdel'){const x=S.fcards[+b.dataset.i];confirmBox('刪除「'+esc(x.n)+'」？','同學手上已經抽到的這張卡還會保留。','刪除',()=>{S.fcards.splice(+b.dataset.i,1);save();renderSettings();},true);return;}
+  if(a==='fcreset'){DEF_FC().forEach(d=>{if(!S.fcards.some(x=>x.id===d.id))S.fcards.push(d);});save();renderSettings();toast('已補回預設功能卡');return;}
   if(a==='pcadd'){S.privCards.push({icon:'🎫',n:'新的特權',r:'N'});save();renderSettings();return;}
   if(a==='pcdel'){S.privCards.splice(+b.dataset.i,1);save();renderSettings();return;}
   if(a==='pcreset'){S.privCards=DEF_PRIV.map(x=>Object.assign({},x));save();renderSettings();return;}
