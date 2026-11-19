@@ -809,7 +809,7 @@ function seatHTML(c,id){
   const n=ses?(ses.warn[no]||0):0,L=S.settings.limit,lv=!n?0:n>=L?3:n===L-1&&L>1?2:1;
   const ab=ses&&ses.absent[no],miss=ses&&ses.miss[no]||[],bonus=ses&&ses.bonus[no]||0,p=getPhoto(c.id,no);
   let dots='';for(let i=0;i<L;i++)dots+='<span class="dot'+(i<n?' f':'')+'"></span>';
-  const rtag=(c.roles.lead[g]===no?'<span class="rtag rl">👑組長</span>':'')+(c.roles.final===no?'<span class="rtag rf">🎵'+esc(S.settings.finalRole.replace(/^音樂/,''))+'</span>':'');
+  const rtag=(c.roles.lead[g]===no?'<span class="rtag rl">👑組長</span>':'')+((c.roles.final===no||c.roles.final2===no)?'<span class="rtag rf">🎵'+esc(S.settings.finalRole.replace(/^音樂/,''))+'</span>':'');
   const tags=(miss.length?'<span title="缺帶：'+esc(miss.join('、'))+'">🎒'+(miss.length>1?miss.length:'')+'</span>':'');
   return '<button class="seat'+(lv?' w'+lv:'')+(ab?' abs':'')+(selSeat===id?' sel':'')+'" id="t'+no+'" data-seat="'+id+'" style="background:'+GC[g][0]+'">'+
     (p?'<img class="ph" src="'+p+'">':'')+'<span class="sn">'+no+'</span><span class="nm">'+esc(s.name)+'</span>'+(ab?'<span class="small" style="color:inherit">請假</span>':'<span class="dots">'+dots+'</span>')+
@@ -848,13 +848,19 @@ $('#view-class').addEventListener('click',e=>{
   const st=e.target.closest('[data-seat]');if(st)seatTap(c,st.dataset.seat);
 });
 function roleModal(c,no,g){
-  const s=stu(c,no),FR=S.settings.finalRole,isL=c.roles.lead[g]===no,isF=c.roles.final===no,curL=c.roles.lead[g]!=null&&!isL?stu(c,c.roles.lead[g]):null,curF=c.roles.final!=null&&!isF?stu(c,c.roles.final):null;
+  const s=stu(c,no),FR=S.settings.finalRole,isL=c.roles.lead[g]===no,isF=c.roles.final===no||c.roles.final2===no,curL=c.roles.lead[g]!=null&&!isL?stu(c,c.roles.lead[g]):null,fs=[c.roles.final,c.roles.final2].filter(x=>x!=null&&stu(c,x)),full=!isF&&fs.length>=2;
   modal('<h2>🎖️ '+no+' 號 '+esc(s?s.name:'')+'</h2><div class="small">第 '+g+' 組</div><div class="rolebtns">'+
     '<button class="rdo'+(isL?' ok':'')+'" data-keep="L"><span class="ri">👑</span><b>'+(isL?'取消小組長':'設為第 '+g+' 組小組長')+'</b><em>'+(curL?'目前是 '+curL.no+' 號 '+esc(curL.name)+'，會換成這位':(isL?'現在是小組長':'每組一位'))+'</em></button>'+
-    '<button class="rdo'+(isF?' ok':'')+'" data-keep="F"><span class="ri">🎵</span><b>'+(isF?'取消'+esc(FR):'設為'+esc(FR))+'</b><em>'+(curF?'目前是 '+curF.no+' 號 '+esc(curF.name)+'，會換成這位':(isF?'現在是'+esc(FR):'全班一位，負責下課最後確認'))+'</em></button></div>'+
+    '<button class="rdo'+(isF?' ok':'')+'" data-keep="F"><span class="ri">🎵</span><b>'+(isF?'取消'+esc(FR):'設為'+esc(FR))+'</b><em>'+(isF?'現在是'+esc(FR):full?'已經有 2 位，要選一位換掉':'全班兩位（目前 '+fs.length+' 位），負責下課最後確認')+'</em></button></div>'+
     '<div class="acts"><button class="btn" data-act="x">關閉</button></div>','',{
     L:()=>{if(isL)delete c.roles.lead[g];else c.roles.lead[g]=no;save();closeModal();renderClass();toast(isL?'已取消小組長':'👑 '+no+' 號是第 '+g+' 組小組長');},
-    F:()=>{if(isF)c.roles.final=null;else c.roles.final=no;save();closeModal();renderClass();toast(isF?'已取消'+FR:'🎵 '+no+' 號是'+FR);}});
+    F:()=>{const done=t=>{save();closeModal();renderClass();toast(t);};
+      if(isF){if(c.roles.final===no)c.roles.final=null;if(c.roles.final2===no)c.roles.final2=null;done('已取消'+FR);return;}
+      const ok1=c.roles.final!=null&&stu(c,c.roles.final),ok2=c.roles.final2!=null&&stu(c,c.roles.final2);
+      if(!ok1){c.roles.final=no;done('🎵 '+no+' 號是'+FR);return;}if(!ok2){c.roles.final2=no;done('🎵 '+no+' 號是'+FR);return;}
+      const a=stu(c,c.roles.final),b=stu(c,c.roles.final2);
+      modal('<h2>🎵 '+esc(FR)+'已經有 2 位</h2><div>要讓 '+no+' 號 '+esc(s?s.name:'')+' 換掉哪一位？</div><div class="rolebtns"><button class="rdo" data-keep="r1"><b>換掉 '+a.no+' 號 '+esc(a.name)+'</b></button><button class="rdo" data-keep="r2"><b>換掉 '+b.no+' 號 '+esc(b.name)+'</b></button></div><div class="acts"><button class="btn" data-act="x">取消</button></div>','',{
+        r1:()=>{c.roles.final=no;done('🎵 '+no+' 號是'+FR);},r2:()=>{c.roles.final2=no;done('🎵 '+no+' 號是'+FR);}});}});
 }
 function seatTap(c,id){
   if(mode==='swap'){
@@ -1011,8 +1017,8 @@ function renderClean(){
       '<div class="clwho">'+(ld?'👑 組長<br><b>'+ld.no+' '+esc(ld.name)+'</b>':'<span class="small">（還沒設定組長，請到「班級與名單」→ 幹部設定）</span>')+'</div>'+
       it.map((x,i)=>{const d=CL.done[g+'_'+i];return '<button class="clbtn'+(d?' on':'')+'" data-cl="tick" data-k="'+g+'_'+i+'"><span class="clbox">'+(d?'✔':'')+'</span>'+esc(x.icon)+' '+esc(x.name)+'</button>';}).join('')+
       (ok?'':'<button class="btn sm" data-cl="all" data-g="'+g+'">全部打勾</button>')+'</div>';}).join('')+'</div>';
-  const allOk=nDone===act.length&&act.length>0,ms=c.roles.final!=null?stu(c,c.roles.final):null;
-  h+='<div class="clmusic'+(CL.final?' ok':'')+'"><div class="cmw">🎵 '+FR+'確認'+(ms?'<b>'+ms.no+' '+esc(ms.name)+'</b>':'<span class="small" style="display:block">（還沒設定'+FR+'，可由老師代按）</span>')+'</div>'+
+  const allOk=nDone===act.length&&act.length>0,ms=[c.roles.final,c.roles.final2].map(x=>x!=null?stu(c,x):null).filter(Boolean);
+  h+='<div class="clmusic'+(CL.final?' ok':'')+'"><div class="cmw">🎵 '+FR+'確認'+(ms.length?'<b>'+ms.map(m=>m.no+' '+esc(m.name)).join('、')+'</b>':'<span class="small" style="display:block">（還沒設定'+FR+'，可由老師代按）</span>')+'</div>'+
     '<div class="cmt">'+(CL.final?'✅ '+FR+'已確認，教室整理完成！':allOk?'請'+FR+'巡一圈做最後確認 👀 沒做好的組，點下面的組別退回':'等 '+act.length+' 組都通過後，由'+FR+'做最後確認')+
     (CL.final?'':'<div class="cmg">'+act.map(g=>{const ok=fin(g);return '<button class="cmgb'+(CL.rej[g]&&!ok?' rej':'')+'" data-cl="rej" data-g="'+g+'" style="--gc:'+GC[g][1]+'"'+(ok?'':' disabled')+'>第 '+g+' 組 '+(ok?'✅':CL.rej[g]?'↩ 退回':'…')+'</button>';}).join('')+'</div>')+'</div>'+
     '<button class="cmbtn'+(CL.final?' on':'')+'" data-cl="final"'+(allOk?'':' disabled')+'><span class="clbox">'+(CL.final?'✔':'')+'</span>'+(CL.final?'已確認':FR+'確認')+'</button></div>';
@@ -1563,7 +1569,7 @@ function renderSetup(){
       '<h3>或直接貼上名單</h3><textarea id="paste" placeholder="一行一位，例如：&#10;1 王小明&#10;2 陳小華&#10;（也可以從 Excel 複製座號、姓名兩欄貼上）"></textarea><div class="row"><button class="btn" data-s="paste">匯入貼上的名單</button></div></div>';
     h+='<div class="panel"><h2>👑 幹部設定</h2><div class="small">下課時由各組組長檢查，最後由'+esc(S.settings.finalRole)+'確認。</div><div class="row">'+
       GROUPS.map(g=>'<label>第 '+g+' 組組長 <select class="inp" data-lead="'+g+'"><option value="">（未設定）</option>'+c.students.filter(s=>sm[s.no]&&+sm[s.no][0]===g).map(s=>'<option value="'+s.no+'"'+(c.roles.lead[g]===s.no?' selected':'')+'>'+s.no+' '+esc(s.name)+'</option>').join('')+'</select></label>').join('')+
-      '<label>🎵 '+esc(S.settings.finalRole)+' <select class="inp" data-final="1"><option value="">（未設定）</option>'+c.students.map(s=>'<option value="'+s.no+'"'+(c.roles.final===s.no?' selected':'')+'>'+s.no+' '+esc(s.name)+'</option>').join('')+'</select></label></div></div>';
+      '<label>🎵 '+esc(S.settings.finalRole)+' '+['final','final2'].map((k,j)=>'<select class="inp" data-final="'+(j+1)+'"><option value="">（未設定）</option>'+c.students.map(s=>'<option value="'+s.no+'"'+(c.roles[k]===s.no?' selected':'')+'>'+s.no+' '+esc(s.name)+'</option>').join('')+'</select>').join(' ')+'</label></div></div>';
     h+='<div class="panel"><div class="row" style="justify-content:space-between;margin-top:0"><h2 style="margin:0">🧑‍🎓 學生名單（'+c.students.length+' 人）</h2><span><button class="btn sm" data-s="auto">依座號重新排座位</button> <button class="btn sm danger" data-s="clear">清空名單</button></span></div>'+
       '<div class="small">座位表在「上課」頁用「🔀 換座位」調整。</div><div class="tw"><table><tr><th>座號</th><th>照片</th><th>姓名</th><th>組別</th><th>🪙</th><th></th></tr>';
     c.students.forEach(s=>{const p=getPhoto(c.id,s.no);
@@ -1572,7 +1578,7 @@ function renderSetup(){
   }
   el.innerHTML=h;
 }
-function removeStudent(c,no){c.students=c.students.filter(s=>s.no!==no);for(const id in c.seats)if(c.seats[id]===no)delete c.seats[id];GROUPS.forEach(g=>{if(c.roles.lead[g]===no)delete c.roles.lead[g];});if(c.roles.final===no)c.roles.final=null;delete c.bricks[no];setPhoto(c.id,no,null);}
+function removeStudent(c,no){c.students=c.students.filter(s=>s.no!==no);for(const id in c.seats)if(c.seats[id]===no)delete c.seats[id];GROUPS.forEach(g=>{if(c.roles.lead[g]===no)delete c.roles.lead[g];});if(c.roles.final===no)c.roles.final=null;if(c.roles.final2===no)c.roles.final2=null;delete c.bricks[no];setPhoto(c.id,no,null);}
 $('#view-setup').addEventListener('click',e=>{
   const b=e.target.closest('[data-s]');if(!b)return;const a=b.dataset.s,c=cur();
   if(a==='pick'){S.cur=b.dataset.id;save();renderAll();}
@@ -1601,7 +1607,7 @@ $('#view-setup').addEventListener('change',async e=>{
   else if(t.dataset.ph&&t.files[0]){try{setPhoto(c.id,+t.dataset.ph,await resizeImage(t.files[0]));renderSetup();}catch(err){toast('這張照片讀不出來');}}
   else if(t.dataset.name){const s=stu(c,+t.dataset.name);if(s&&t.value.trim()){s.name=t.value.trim().slice(0,12);save();}}
   else if(t.dataset.lead){if(t.value)c.roles.lead[t.dataset.lead]=+t.value;else delete c.roles.lead[t.dataset.lead];save();}
-  else if(t.dataset.final){c.roles.final=t.value?+t.value:null;save();}
+  else if(t.dataset.final){c.roles[t.dataset.final==='2'?'final2':'final']=t.value?+t.value:null;save();}
 });
 
 /* ---------- 設定 ---------- */
