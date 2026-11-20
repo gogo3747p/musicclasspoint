@@ -105,6 +105,7 @@ main{padding:12px 16px 60px;max-width:1400px;margin:0 auto}
 .otbar.ok{background:#ecfdf5;border-color:#6ee7b7;color:#065f46}.otbar.no{background:#f8fafc;border-color:#cbd5e1;color:#475569}
 #otClock{font-size:18px;color:#b45309}#otClock.late{color:#be123c}
 .gnow{margin-left:6px;font-size:12px;font-weight:800;background:rgba(255,255,255,.75);border-radius:8px;padding:1px 6px;color:#065f46}
+.dexfull{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff7e6;border:2px solid #fbbf24;border-radius:12px;padding:8px 12px;margin-bottom:8px;font-weight:800}.dexfull.done{background:#ecfdf5;border-color:#6ee7b7;color:#065f46;font-weight:700}
 .lastnote{background:#eef6ff;border:1px solid #bfdbfe;border-radius:12px;padding:6px 12px;margin:0 0 8px;font-size:14px;color:#1e3a8a}
 .tagl{position:absolute;left:3px;bottom:2px;font-size:12px;font-weight:800;color:#047857;background:#fff;border-radius:8px;padding:0 4px}
 .unseat{margin-top:10px;background:#fff7e6;border:1px solid #fcd34d;border-radius:12px;padding:8px 12px;font-size:14px}
@@ -578,6 +579,10 @@ function cardsOf(c,g){c.cards=c.cards||{};return c.cards[g]=c.cards[g]||[];}
 const FS=k=>+S.settings[k];
 const stCost=i=>FS('sc'+i);
 const cropImg=x=>x.img||(CROPIMG[x.id]||'');
+function dexInfo(c,g){const L=cropList(),own={};cardsOf(c,g).filter(x=>x.k==='x').forEach(x=>own[x.cid]=1);const got=L.filter(x=>own[x.id]).length;c.dexClaim=c.dexClaim||{};return {got:got,all:L.length,full:L.length>0&&got===L.length,claimed:(c.dexClaim[g]||0)>=L.length&&L.length>0};}
+function dexClaim(c,g){const D=dexInfo(c,g);if(!D.full||D.claimed)return;const sm=seatOf(c),mem=c.students.filter(s=>sm[s.no]&&+sm[s.no][0]===g);if(!mem.length){toast('第 '+g+' 組沒有組員');return;}
+  confirmBox('🎉 圖鑑集滿了！','第 '+g+' 組每位組員（'+mem.length+' 人）各得到一張樂透，不扣點數。號碼之後可以在每位同學的「🎁 兌換」視窗填寫。','兌換樂透',()=>{c.lotto=c.lotto||[];mem.forEach(s=>{c.lotto.push({id:uid(),no:s.no,nums:[],at:Date.now(),src:'dex'});logR(c,s.no,'樂透',0,'集滿魔法作物圖鑑');});c.dexClaim[g]=D.all;save();renderTown();fanfare();toast('🎰 第 '+g+' 組每人一張樂透！');});}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-dexclaim]');if(!b)return;const c=cur();if(c)dexClaim(c,+b.dataset.dexclaim);});
 function cropList(){return (S.cropCards||[]).filter(x=>x.n);}
 function irrOf(c,g){return cardsOf(c,g).filter(x=>x.k==='w'&&!x.used);}
 function plotState(c,p){ // empty | wait | lesson | water | ripe
@@ -660,7 +665,8 @@ function cardsHTML(c){
   h+='<div class="panel"><h2>💧✨ 魔法灌溉卡　<span class="small">可用 '+iu+' 張・已用 '+(ir.length-iu)+' 張</span></h2><div class="irrbox"><img src="'+WHEATIMG+'"><div>對已經灑播的田使用，這塊田會長成<b>魔法稻穗</b>，收成時小麥 ×'+FS('magicMul')+'（做成產品或賣掉都是兩倍金幣）。<br>使用方法：到「🌾 魔法麥田」，在第 '+fg+' 組的田旁邊按 <b>💧✨</b>。'+(iu?'<div class="row"><button class="btn pri" data-ftab="farm">去魔法麥田使用</button></div>':'')+'</div></div></div>';
   if(pv.length)h+='<div class="panel"><h2>🎫 以前抽到的特權卡</h2>'+(pv.length?'<div class="pcards">'+pv.map(x=>{const p=x.d||{};return '<div class="pcard'+(x.used?' used':'')+'" style="--rc:'+RAR[p.r||'N'].c+'"><div class="pi">'+esc(p.icon||'🎫')+'</div><b>'+esc(p.n||'')+'</b><span class="small">'+RAR[p.r||'N'].t+'</span>'+(x.used?'<span class="small">✔ 已使用</span>':'<button class="btn sm" data-use="'+x.id+'">使用</button>')+'</div>';}).join('')+'</div>':'<div class="small">還沒有特權卡，抽卡試試看！</div>')+'</div>';
   const L=cropList(),got=L.filter(x=>own[x.id]).length;
-  h+='<div class="panel"><h2>🌱 魔法作物圖鑑　<span class="small">'+got+' / '+L.length+'</span></h2><div class="dex">'+L.map(x=>own[x.id]?'<div class="dc" style="--rc:'+(RAR[x.r]||RAR.N).c+'" title="'+esc(x.d||'')+'"><img src="'+cropImg(x)+'"><b>'+esc(x.n)+'</b><span class="small" style="color:'+(RAR[x.r]||RAR.N).c+'">'+(RAR[x.r]||RAR.N).t+'</span>'+(own[x.id]>1?'<em>×'+own[x.id]+'</em>':'')+'</div>':'<div class="dc lock"><img src="'+cropImg(x)+'"><b>？？？</b></div>').join('')+'</div><div class="small" style="margin-top:8px">老師可以到「設定 → 魔法卡」新增更多魔法作物卡（上傳圖片即可）。</div></div>';
+  const DX=dexInfo(c,fg);
+  h+='<div class="panel"><h2>🌱 魔法作物圖鑑　<span class="small">'+got+' / '+L.length+'</span></h2>'+(DX.full&&!DX.claimed?'<div class="dexfull">🎉 集滿了！整組每人可以換一張樂透 <button class="btn pri" data-dexclaim="'+fg+'">🎰 兌換樂透</button></div>':DX.claimed?'<div class="dexfull done">✅ 已經用集滿的圖鑑換過樂透了'+(L.length?'':'')+'（老師新增作物卡後，再集滿可以再換）</div>':'<div class="small" style="margin-bottom:6px">集滿全部作物卡，整組每人可以換一張樂透 🎰</div>')+'<div class="dex">'+L.map(x=>own[x.id]?'<div class="dc" style="--rc:'+(RAR[x.r]||RAR.N).c+'" title="'+esc(x.d||'')+'"><img src="'+cropImg(x)+'"><b>'+esc(x.n)+'</b><span class="small" style="color:'+(RAR[x.r]||RAR.N).c+'">'+(RAR[x.r]||RAR.N).t+'</span>'+(own[x.id]>1?'<em>×'+own[x.id]+'</em>':'')+'</div>':'<div class="dc lock"><img src="'+cropImg(x)+'"><b>？？？</b></div>').join('')+'</div><div class="small" style="margin-top:8px">老師可以到「設定 → 魔法卡」新增更多魔法作物卡（上傳圖片即可）。</div></div>';
   return h;
 }
 function pickW(arr,wf){const t=arr.reduce((a,x)=>a+wf(x),0);let r=Math.random()*t;for(const x of arr){r-=wf(x);if(r<0)return x;}return arr[arr.length-1];}
@@ -677,7 +683,7 @@ function drawCard(c,g){
   const front=card.k==='p'?'<div class="pi" style="font-size:90px">'+esc(card.d.icon)+'</div><b>'+esc(card.d.n)+'</b><span>'+rc.t+'・課堂特權卡</span>':
     card.k==='w'?'<img src="'+WHEATIMG+'"><b>魔法灌溉卡</b><span>收成 ×'+FS('magicMul')+'</span>':'<img src="'+cropImg(cx)+'"><b>'+esc(cx.n)+'</b><span>'+rc.t+'・魔法作物</span>';
   modal('<div class="flip"><div class="fin"><div class="cback"><span>✦</span></div><div class="cfront" style="--rc:'+(card.k==='w'?'#7c3aed':rc.c)+'">'+front+'</div></div></div>'+
-    '<h2>'+(card.k==='w'?'💧✨ 魔法灌溉卡！':r==='SSR'?'🌟 傳說卡！':r==='SR'?'✨ 稀有卡！':'抽到了！')+'</h2><div class="small">'+(card.k==='p'?'特權卡已放進第 '+g+' 組的卡冊，使用時按「使用」。':card.k==='w'?'到魔法麥田對一塊田使用，會長成魔法稻穗！':isNew?'新的作物卡！'+esc(cx.d||''):'已經有這張了（×'+cardsOf(c,g).filter(y=>y.k==='x'&&y.cid===cx.id).length+'）')+'</div>'+
+    '<h2>'+(card.k==='w'?'💧✨ 魔法灌溉卡！':r==='SSR'?'🌟 傳說卡！':r==='SR'?'✨ 稀有卡！':'抽到了！')+'</h2><div class="small">'+(card.k==='p'?'特權卡已放進第 '+g+' 組的卡冊，使用時按「使用」。':card.k==='w'?'到魔法麥田對一塊田使用，會長成魔法稻穗！':isNew?'新的作物卡！'+esc(cx.d||'')+(dexInfo(c,g).full&&!dexInfo(c,g).claimed?'<br><b style="color:#b45309">🎉 圖鑑集滿了！到下方圖鑑按「兌換樂透」，整組每人一張</b>':''):'已經有這張了（×'+cardsOf(c,g).filter(y=>y.k==='x'&&y.cid===cx.id).length+'）')+'</div>'+
     '<div class="acts"><button class="btn" data-act="x">好</button>'+((c.gb[g]||0)>=k?'<button class="btn pri" data-act="again">再抽一次（🪙'+k+'）</button>':'')+'</div>','',{again:()=>drawCard(c,g)});
   setTimeout(()=>{const f=document.querySelector('#overlay .flip');if(f)f.classList.add('go');if(r==='SSR'||card.k==='w')fanfare();else tone(r==='SR'?988:784,.2,'triangle',.2);},350);
 }
@@ -1394,8 +1400,8 @@ const FCIMG=["data:image/webp;base64,UklGRsAlAABXRUJQVlA4ILQlAACwkwCdASoYAZcBPmE
 /* ---------- 個人點數：點歌 30・抽功能卡 60・樂透 100 ---------- */
 const FCARDS=[['回答卡','有優先回答的權利'],['指定卡','被點到時，可以指定其他同學回答或表演'],['幫助卡','請同學一起回答，或找一個夥伴一起演奏'],['兩倍卡','本次回答加分兩倍'],
   ['防禦卡','抵銷別人對你的攻擊或點名'],['跳過卡','被點到時可以跳過'],['延遲卡','被點到演奏或演唱時，可以延後演出'],['表演卡','有優先表演的權利']];
-const DEF_FC=()=>FCARDS.map((x,i)=>({id:'f'+i,n:x[0],d:x[1],w:10,bi:i})).concat([{id:'fw1',n:'個人免寫卡',d:'可以免寫一次個人作業或學習單',w:15,icon:'📝'},{id:'fw2',n:'小組免寫卡',d:'全組可以免寫一次小組作業或學習單',w:5,icon:'👥'}]);
-function fcAll(){if(!Array.isArray(S.fcards))S.fcards=DEF_FC();return S.fcards;}
+const DEF_FC=()=>FCARDS.map((x,i)=>({id:'f'+i,n:x[0],d:x[1],w:10,bi:i})).concat([{id:'fw1',n:'個人免寫卡',d:'可以免寫一次個人作業或學習單',w:15,icon:'📝'},{id:'fw2',n:'小組免寫卡',d:'全組可以免寫一次小組作業或學習單',w:5,icon:'👥'},{id:'fs1',n:'自選座位卡',d:'可以自己選座位坐一節課',w:10,icon:'💺'}]);
+function fcAll(){if(!Array.isArray(S.fcards))S.fcards=DEF_FC();if(!S.fcV2){S.fcV2=1;DEF_FC().forEach(d=>{if(d.id==='fs1'&&!S.fcards.some(x=>x.id===d.id))S.fcards.push(d);});}return S.fcards;}
 function fcList(){return fcAll().filter(x=>x&&x.n&&(+x.w||0)>0);}
 function fcPct(x){const t=fcList().reduce((a,y)=>a+(+y.w||0),0);return t?Math.round((+x.w||0)/t*1000)/10:0;}
 function fcDef(x){if(!x)return {n:'?',d:''};const id=x.fid||(x.i!=null?'f'+x.i:'');return fcAll().find(y=>y.id===id)||(x.i!=null&&FCARDS[x.i]?{n:FCARDS[x.i][0],d:FCARDS[x.i][1],bi:x.i}:{n:x.n||'功能卡',d:'',icon:'🃏'});}
@@ -1545,7 +1551,8 @@ function showRules(){
       '<div><b>🌾 種魔法小麥</b><span>灑播 🪙'+t.sc0+'，一輪共 🪙'+[0,1,2,3,4,5].reduce((a,i)=>a+(+t['sc'+i]),0)+'，收成 🌾'+t.yield+' 把</span></div>'+
       '<div><b>🧁 做成產品賣掉</b><span>小麥做成魔法產品，賣得更多金幣</span></div>'+
       '<div><b>🃏 抽魔法卡</b><span>每次 🪙'+t.cardCost+'：魔法灌溉卡、魔法作物卡</span></div>'+
-      '<div><b>💧✨ 魔法灌溉卡</b><span>長成魔法稻穗，收成 ×'+t.magicMul+'</span></div></div></div>';
+      '<div><b>💧✨ 魔法灌溉卡</b><span>長成魔法稻穗，收成 ×'+t.magicMul+'</span></div>'+
+      '<div><b>📖 集滿作物圖鑑</b><span>整組每人換一張樂透 🎰</span></div></div></div>';
   const o=$('#clean');o.innerHTML='<div class="dcard rules">'+h+'</div>';o.classList.add('show');o.dataset.rules='1';
 }
 $('#clean').addEventListener('click',e=>{if(!$('#clean').dataset.rules)return;const b=e.target.closest('[data-rl]');
