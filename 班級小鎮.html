@@ -98,6 +98,10 @@ main{padding:12px 16px 60px;max-width:1400px;margin:0 auto}
 .rtag{font-size:11px;font-weight:900;border-radius:7px;padding:0 4px;line-height:1.5;white-space:nowrap}.rtag.rl{background:#fde68a;color:#92400e}.rtag.rf{background:#ddd6fe;color:#5b21b6}
 .rolebtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
 .pnote{margin-top:10px;text-align:left}.pnote textarea{width:100%;box-sizing:border-box;margin-top:4px;font-size:16px;border-radius:10px;border:2px solid var(--line);padding:8px;font-family:inherit}
+.otbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7e6;border:2px solid #fbbf24;border-radius:12px;padding:6px 8px 6px 12px;margin:0 0 8px;font-size:15px;font-weight:700}
+.otbar.ok{background:#ecfdf5;border-color:#6ee7b7;color:#065f46}.otbar.no{background:#f8fafc;border-color:#cbd5e1;color:#475569}
+#otClock{font-size:18px;color:#b45309}#otClock.late{color:#be123c}
+.gnow{margin-left:6px;font-size:12px;font-weight:800;background:rgba(255,255,255,.75);border-radius:8px;padding:1px 6px;color:#065f46}
 .lastnote{background:#eef6ff;border:1px solid #bfdbfe;border-radius:12px;padding:6px 12px;margin:0 0 8px;font-size:14px;color:#1e3a8a}
 .tagl{position:absolute;left:3px;bottom:2px;font-size:12px;font-weight:800;color:#047857;background:#fff;border-radius:8px;padding:0 4px}
 .unseat{margin-top:10px;background:#fff7e6;border:1px solid #fcd34d;border-radius:12px;padding:8px 12px;font-size:14px}
@@ -463,6 +467,12 @@ function setPhotoLocal(cid,no,data){const k=cid+'_'+no;if(data)PH[k]=data;else d
 
 /* ---------- 預設值 ---------- */
 const DEF_SET={supFree:3,supPen:1,r1:30,r2:60,r3:100,rk1:3,rk2:2,rk3:1,examBonus:10,drawDays:'1,15',termEnd:'',p3:'餅乾 ×1',p4:'隨機吊飾 ×1',p5:'飲料 ×1',p6:'下午茶套組',farmMin:2,nextLesson:true,sc0:10,sc1:4,sc2:6,sc3:8,sc4:10,sc5:12,yield:10,wheatPrice:6,magicMul:2,cardCost:30,privRate:30,irrRate:20,limit:3,penalty:1,lucky:5,luckyMax:5,limitMsg:'請下課來找老師聊聊 🙂',bGood:1,bSup:1,bClean:1,speed:1,finalRole:'音樂小老師',cleanOn:true,flip:false,sound:true};
+document.addEventListener('click',e=>{const b=e.target.closest('#view-class [data-tool=ontime],#view-class [data-tool=ontimeflip]');if(!b)return;e.stopPropagation();const c=cur(),ses=c&&c.session;if(!ses)return;
+  if(b.dataset.tool==='ontime'){ses.onTimeAt=Date.now();ses.onTime=ses.onTimeAt-ses.start<=180000;toast(ses.onTime?'✅ 3 分鐘內完成！':'⏰ 超過 3 分鐘了');}
+  else{ses.onTime=!ses.onTime;}
+  save();renderClass();},true);
+setInterval(()=>{const el=document.getElementById('otClock');if(!el)return;const c=cur(),ses=c&&c.session;if(!ses)return;const left=Math.round((ses.start+180000-Date.now())/1000);
+  el.textContent=left>0?'還剩 '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0'):'已超過 3 分鐘';el.className=left>0?'':'late';},1000);
 function seatView(){let v=null;try{v=localStorage.getItem('classtown_seatview');}catch(e){}return v==='stu'||v==='tea'?v:(S.settings.flip?'stu':'tea');}
 function setSeatView(v){try{localStorage.setItem('classtown_seatview',v);}catch(e){}}
 document.addEventListener('click',e=>{const b=e.target.closest('#view-class [data-vw]');if(!b)return;setSeatView(b.dataset.vw);renderClass();});
@@ -786,7 +796,7 @@ function give(c,no,d,dgv){ // d：個人點數（也記入累計得分）；dgv�
 function takeBack(c,r){c.bricks[r.no]=Math.max(0,(c.bricks[r.no]||0)-r.ds);ptsAdd(c,r.no,-(r.dp||0));if(r.g)c.gb[r.g]=Math.max(0,(c.gb[r.g]||0)-r.dg);}
 
 /* ---------- 上課畫面 ---------- */
-const MODES=[['warn','⚠️ 警告','點座位記一次警告'],['good','👍 加分','點座位：表現好，個人 ⭐+1、小組 🪙+1'],['redeem','🎁 兌換','點學生：看個人點數，兌換點歌卡（⭐30）、抽功能卡（⭐60）或樂透（⭐100）'],['sup','🎒 學用品','點沒帶的同學登記缺帶項目'],['abs','🚫 請假','點座位切換請假／出席'],['swap','🔀 換座位','先點一個座位，再點另一個座位，兩個位置互換'],['role','🎖️ 幹部','點座位：設定或取消小組長（👑）、小老師（🎵）']];
+const MODES=[['warn','🤝 包容','點座位記一次包容'],['good','👍 加分','點座位：表現好，個人 ⭐+1、小組 🪙+1'],['redeem','🎁 兌換','點學生：看個人點數，兌換點歌卡（⭐30）、抽功能卡（⭐60）或樂透（⭐100）'],['sup','🎒 學用品','點沒帶的同學登記缺帶項目'],['abs','🚫 請假','點座位切換請假／出席'],['swap','🔀 換座位','先點一個座位，再點另一個座位，兩個位置互換'],['role','🎖️ 幹部','點座位：設定或取消小組長（👑）、小老師（🎵）']];
 function renderAll(){renderTop();renderView();}
 function renderView(){
   document.body.classList.toggle('vclass',view==='class');document.body.classList.toggle('vlotto',view==='lotto');
@@ -823,18 +833,20 @@ function renderClass(){
   h+='<div class="modes">'+MODES.map(m=>'<button class="mode'+(mode===m[0]?' on':'')+'" data-mode="'+m[0]+'">'+m[1]+'</button>').join('')+'<button class="mode rulesbtn" data-tool="rules">📜 規則</button>'+
     '<div class="tools"><button class="btn" data-tool="undo">↩ 復原</button><button class="btn" data-tool="talk">💬 聊聊名單'+(nt?'<span class="badge">'+nt+'</span>':'')+'</button><button class="btn" data-tool="draw">🎲 抽籤</button><button class="btn" data-tool="timer">⏱️ 計時</button><button class="btn" data-tool="clean">🧹 組長檢查</button></div></div>';
   const M=MODES.find(m=>m[0]===mode);
-  h+='<div class="modetip">'+(mode==='warn'?'點座位記一次警告；滿 '+L+' 次扣個人 ⭐'+S.settings.penalty+'，並下課找老師聊聊。':M[2])+
+  h+='<div class="modetip">'+(mode==='warn'?'點座位記一次包容；滿 '+L+' 次扣個人 ⭐'+S.settings.penalty+'，並下課找老師聊聊。':M[2])+
     (mode==='swap'?'　<button class="btn sm pri" data-tool="rseat">🎲 隨機分配座位</button> <button class="btn sm" data-tool="avoid">🚫 不同組設定'+((c.avoid||[]).length?'（'+c.avoid.length+'）':'')+'</button>':'')+(mode==='sup'&&ses?'　<button class="btn sm'+(ses.supChecked?' pri':'')+'" data-tool="supdone">'+(ses.supChecked?'✔ 已完成檢查（其他人都有帶）':'完成檢查：其他人都有帶')+'</button>':'')+(!ses&&mode!=='swap'&&mode!=='redeem'&&mode!=='role'?'　<b style="color:#b45309">（先按「▶ 開始上課」才會記錄）</b>':'')+'</div>';
   const gs=flip?[3,2,1]:[1,2,3];
+  if(ses){const lim=180000;if(ses.onTime==null)h+='<div class="otbar"><span>⏱️ 打鐘後 3 分鐘內安靜坐好、到齊（被老師留下的不算）　<b id="otClock"></b></span><button class="btn pri" data-tool="ontime">✅ 全班坐好、到齊了</button></div>';
+    else{const t=ses.onTimeAt?Math.round((ses.onTimeAt-ses.start)/1000):null,mm=t==null?'':Math.floor(t/60)+' 分 '+(t%60)+' 秒';h+='<div class="otbar '+(ses.onTime?'ok':'no')+'"><span>'+(ses.onTime?'✅ '+(mm?mm+'坐好、到齊':'全班準時坐好')+'，下課可以抽本日幸運星':'⏰ '+(mm?mm+'才坐好':'沒有準時坐好')+'，這節不抽本日幸運星')+'</span><button class="btn sm" data-tool="ontimeflip">改判'+(ses.onTime?'為沒達成':'為達成')+'</button></div>';}}
   {const ln=c.lessons.slice().reverse().find(l=>l.note);if(ln)h+='<div class="lastnote">📖 上次進度（'+esc(ln.day)+'）：'+esc(ln.note)+'</div>';}
   h+='<div class="vsw"><span>座位表視角</span><button data-vw="stu"'+(flip?' class="on"':'')+'>👀 學生角度<small>看投影畫面</small></button><button data-vw="tea"'+(flip?'':' class="on"')+'>🧑‍🏫 教師角度<small>面對 iPad</small></button></div>';
   h+='<div class="room'+(flip?' rflip':'')+'"><div class="groups">'+gs.map(g=>{
     let ids=[];for(let i=0;i<9;i++)ids.push(g+'-'+i);if(flip)ids.reverse();
-    return '<div class="gcard" style="border-color:'+GC[g][1]+'"><div class="ghead" style="background:'+GC[g][0]+'"><span>第 '+g+' 組</span><span class="gpts"><button data-gpt="'+g+'" data-d="-1" class="neg">−1</button><button data-gpt="'+g+'" data-d="1">+1</button><input type="number" class="gcus" data-gcus="'+g+'" placeholder="自訂" title="輸入分數後按 Enter（可輸入負數）"><b class="gcoin">🪙'+(c.gb[g]||0)+'</b></span></div><div class="seats">'+ids.map(id=>seatHTML(c,id)).join('')+'</div></div>';}).join('')+
+    return '<div class="gcard" style="border-color:'+GC[g][1]+'"><div class="ghead" style="background:'+GC[g][0]+'"><span>第 '+g+' 組'+(c.session?'<small class="gnow">本節 +'+lessonScore(c,g)+'</small>':'')+'</span><span class="gpts"><button data-gpt="'+g+'" data-d="-1" class="neg">−1</button><button data-gpt="'+g+'" data-d="1">+1</button><input type="number" class="gcus" data-gcus="'+g+'" placeholder="自訂" title="輸入分數後按 Enter（可輸入負數）"><b class="gcoin">🪙'+(c.gb[g]||0)+'</b></span></div><div class="seats">'+ids.map(id=>seatHTML(c,id)).join('')+'</div></div>';}).join('')+
     '</div><div class="podium">講台</div></div>';
   const sm=seatOf(c),un=c.students.filter(s=>!sm[s.no]);
   if(un.length)h+='<div class="unseat">⚠️ 還有 '+un.length+' 位同學沒有座位（27 個位置已滿或剛新增）：'+un.map(s=>s.no+' '+esc(s.name)).join('、')+'。用「🔀 換座位」或到「班級與名單」調整。</div>';
-  h+='<div class="legend">🪙 怎麼拿金幣：整節零警告 +'+S.settings.bGood+'、全班都帶學用品 +'+S.settings.bSup+'、下課組長檢查通過（整組）+'+S.settings.bClean+'，老師也可以用「👍 加分」或各組標題列的 −1／+1／自訂。金幣可以到「魔法小鎮」種魔法小麥、做產品、抽魔法卡。</div>';
+  h+='<div class="legend">🪙 怎麼拿金幣：整節零包容 +'+S.settings.bGood+'、全班都帶學用品 +'+S.settings.bSup+'、下課組長檢查通過（整組）+'+S.settings.bClean+'，老師也可以用「👍 加分」或各組標題列的 −1／+1／自訂。金幣可以到「魔法小鎮」種魔法小麥、做產品、抽魔法卡。</div>';
   el.innerHTML=h+'</div>'+asideHTML(c)+'</div>';
 }
 $('#view-class').addEventListener('change',e=>{const t=e.target,c=cur();if(c&&t.dataset.rdsel!=null){const v=t.value;t.value='';if(v)redeemModal(c,+v);return;}if(c&&t.dataset.td){const x=(c.todo||[]).find(y=>y.id===t.dataset.td);if(x){x.done=t.checked;save();renderClass();}}});
@@ -893,13 +905,13 @@ function groupAdd(c,g,d){d=d||1;const g0=c.gb[g]||0,g1=Math.max(0,g0+d),real=g1-
 function showLimit(c,s){
   [392,330,262].forEach((f,i)=>setTimeout(()=>tone(f,0.3,'sawtooth',0.12),i*220));
   const p=getPhoto(c.id,s.no);
-  modal((p?'<img class="limitph" src="'+p+'">':'')+'<div class="limitno">'+s.no+' 號</div><h2>'+esc(s.name)+'</h2><div class="limitmsg">'+esc(S.settings.limitMsg)+'</div><div style="margin-top:6px">警告滿 '+S.settings.limit+' 次，扣個人 ⭐'+S.settings.penalty+'</div><div class="acts"><button class="btn pri" data-act="x">知道了</button><button class="btn" data-act="undo">↩ 按錯了，復原</button></div>','limit',{undo:undo});
+  modal((p?'<img class="limitph" src="'+p+'">':'')+'<div class="limitno">'+s.no+' 號</div><h2>'+esc(s.name)+'</h2><div class="limitmsg">'+esc(S.settings.limitMsg)+'</div><div style="margin-top:6px">包容滿 '+S.settings.limit+' 次，扣個人 ⭐'+S.settings.penalty+'</div><div class="acts"><button class="btn pri" data-act="x">知道了</button><button class="btn" data-act="undo">↩ 按錯了，復原</button></div>','limit',{undo:undo});
 }
 function undo(){
   const c=cur(),ses=c&&c.session;if(!ses||!ses.undo.length){toast('沒有可以復原的紀錄');return;}
   const u=ses.undo.pop();
   if(u.t==='multi'){u.rs.forEach(r=>takeBack(c,r));toast('已復原上一次的加分');}
-  else if(u.t==='warn'){ses.warn[u.no]=Math.max(0,(ses.warn[u.no]||0)-1);if(!ses.warn[u.no])delete ses.warn[u.no];if(u.pen)takeBack(c,u.pen);if(u.talk)c.talk=c.talk.filter(t=>t.id!==u.talk);toast('已復原 '+u.no+' 號的警告');}
+  else if(u.t==='warn'){ses.warn[u.no]=Math.max(0,(ses.warn[u.no]||0)-1);if(!ses.warn[u.no])delete ses.warn[u.no];if(u.pen)takeBack(c,u.pen);if(u.talk)c.talk=c.talk.filter(t=>t.id!==u.talk);toast('已復原 '+u.no+' 號的包容');}
   else if(u.t==='good'){takeBack(c,u.r);ses.bonus[u.r.no]=Math.max(0,(ses.bonus[u.r.no]||0)-1);if(!ses.bonus[u.r.no])delete ses.bonus[u.r.no];toast('已復原 '+u.r.no+' 號的加分');}
   else if(u.t==='gadd'){const d=u.d||1;c.gb[u.g]=Math.max(0,(c.gb[u.g]||0)-d);ses.gAdd[u.g]=(ses.gAdd[u.g]||0)-d;toast('已復原第 '+u.g+' 組的'+(d>0?'加分':'扣分'));}
   else if(u.t==='abs'){if(u.prev)ses.absent[u.no]=true;else delete ses.absent[u.no];toast('已復原 '+u.no+' 號的請假狀態');}
@@ -954,23 +966,23 @@ $('#cd').addEventListener('click',e=>{const b=e.target.closest('[data-cd]');if(!
 $('#btnLesson').addEventListener('click',()=>{
   const c=cur();if(!c)return;
   if(!c.session){c.session={start:Date.now(),warn:{},miss:{},absent:{},bonus:{},gAdd:{},supChecked:false,undo:[],clean:{done:{},rej:{},final:false}};mode='warn';view='class';save();renderAll();tone(660,0.15,'triangle',0.2);toast('開始上課！點座位記錄');}
-  else luckyStar(c,()=>{if(S.settings.cleanOn)openClean(true);else confirmBox('要下課了嗎？','會結算這堂課的金幣並儲存紀錄。','下課結算',()=>settle());});
+  else (c.session.luckyDone?(f=>f()):(f=>luckyStar(c,f)))(()=>{if(S.settings.cleanOn)openClean(true);else confirmBox('要下課了嗎？','會結算這堂課的金幣並儲存紀錄。','下課結算',()=>settle());});
 });
-/* 本日幸運星：下課、小組長檢查前抽，沒被警告的出席同學才有資格 */
-function luckyStar(c,next){
-  const ses=c.session;if(!ses)return;const sm=seatOf(c),pts=+S.settings.lucky||0;
+/* 本日幸運星：下課、小組長檢查前抽，沒被包容的出席同學才有資格 */
+function luckyStar(c,next0){
+  const ses=c.session;if(!ses)return;const next=()=>{ses.luckyDone=true;save();next0();};const sm=seatOf(c),pts=+S.settings.lucky||0;
   const pool=()=>c.students.filter(s=>sm[s.no]&&!ses.absent[s.no]&&!(ses.warn[s.no]>0)&&!(ses.lucky&&ses.lucky.no===s.no));
   const nxt='<button class="btn pri" data-act="go">下一步：'+(S.settings.cleanOn?'🧹 小組長檢查':'下課結算')+' ▶</button>';
   const show=(first)=>{const L=ses.lucky,s=L&&stu(c,L.no),p=s&&getPhoto(c.id,s.no),n=pool().length;
     const res=s?'<div class="drawout">'+(p?'<img class="drawph" src="'+p+'">':'')+'<div><div class="limitno">'+s.no+' 號</div><h2 style="font-size:34px;margin:4px 0">'+esc(s.name)+'</h2><div>第 '+groupOf(c,s.no)+' 組　<b style="color:#b45309">個人 ⭐+'+pts+'</b></div></div></div>':'';
-    modal('<h2>🌟 本日幸運星</h2><div class="small">這節課沒有被警告的同學才有資格（目前 '+(n+(s?1:0))+' 位），幸運星個人 ⭐+'+pts+'。</div>'+machineHTML('luckMach')+'<div id="luckRes" style="min-height:60px">'+(first?'':res)+'</div>'+
+    modal('<h2>🌟 本日幸運星</h2><div class="small">這節課沒有被包容的同學才有資格（目前 '+(n+(s?1:0))+' 位），幸運星個人 ⭐+'+pts+'。</div>'+machineHTML('luckMach')+'<div id="luckRes" style="min-height:60px">'+(first?'':res)+'</div>'+
       '<div class="acts" id="luckActs"'+(first?' style="visibility:hidden"':'')+'>'+(s?'<button class="btn" data-keep="re">🔄 重抽</button>':'<button class="btn" data-act="go">這節不抽</button><button class="btn pri" data-keep="draw">🌟 抽幸運星</button>')+(s?nxt:'')+'</div>','wide',{__lock:!!first,go:next,draw:()=>roll(),re:()=>confirmBox('重抽幸運星？','會收回 '+L.no+' 號的 ⭐+'+pts+'，重新抽一位。','重抽',()=>{if(L.r)takeBack(c,L.r);ses.lucky=null;save();roll();})});};
-  const roll=()=>{const P=pool();if(!P.length){toast('這節沒有符合資格的同學（大家都被警告過或請假）');ses.lucky=null;show();return;}
+  const roll=()=>{const P=pool();if(!P.length){toast('這節沒有符合資格的同學（大家都被包容過或請假）');ses.lucky=null;show();return;}
     const s=P[Math.floor(Math.random()*P.length)];ses.lucky={no:s.no,r:give(c,s.no,pts,0)};logR(c,s.no,'本日幸運星',0,'⭐+'+pts);save();
     show(true);spinBall($('#luckMach'),s.no).then(()=>{if(view==='class')renderClass();show(false);fanfare();});};
   const nw=Object.keys(ses.warn).filter(k=>ses.warn[k]>0).length,mx=+S.settings.luckyMax;
-  if(!ses.lucky&&nw>mx){modal('<h2>🌟 本日幸運星</h2><div style="font-size:52px">🌧️</div><div style="font-size:20px;margin:8px 0">這節課有 <b>'+nw+'</b> 位同學被警告（超過 '+mx+' 位）</div><div>今天不抽幸運星，下次加油！</div><div class="acts">'+nxt+'</div>','',{go:next});return;}
-  if(!ses.lucky&&ses.onTime==null){modal('<h2>🌟 本日幸運星</h2><div style="font-size:21px;margin:10px 0;font-weight:800">打鐘後 3 分鐘內，全班都安靜坐好、到齊了嗎？</div><div class="small">被老師留下的同學不算。到齊才可以抽幸運星。</div><div class="rolebtns"><button class="rdo ok" data-keep="y"><span class="ri">✅</span><b>有，全班到齊</b><em>可以抽幸運星</em></button><button class="rdo" data-keep="n"><span class="ri">⏰</span><b>沒有</b><em>這節不抽</em></button></div>','',{__lock:true,
+  if(!ses.lucky&&nw>mx){modal('<h2>🌟 本日幸運星</h2><div style="font-size:52px">🌧️</div><div style="font-size:20px;margin:8px 0">這節課有 <b>'+nw+'</b> 位同學被包容（超過 '+mx+' 位）</div><div>今天不抽幸運星，下次加油！</div><div class="acts">'+nxt+'</div>','',{go:next});return;}
+  if(!ses.lucky&&ses.onTime==null){modal('<h2>🌟 本日幸運星</h2><div style="font-size:21px;margin:10px 0;font-weight:800">這節課沒有按「全班坐好、到齊了」</div><div class="small">打鐘後 3 分鐘內，全班有安靜坐好、到齊嗎？（被老師留下的同學不算）</div><div class="rolebtns"><button class="rdo ok" data-keep="y"><span class="ri">✅</span><b>有，全班到齊</b><em>可以抽幸運星</em></button><button class="rdo" data-keep="n"><span class="ri">⏰</span><b>沒有</b><em>這節不抽</em></button></div>','',{__lock:true,
       y:()=>{ses.onTime=true;save();luckyStar(c,next);},n:()=>{ses.onTime=false;save();luckyStar(c,next);}});return;}
   if(!ses.lucky&&ses.onTime===false){modal('<h2>🌟 本日幸運星</h2><div style="font-size:52px">⏰</div><div style="font-size:20px;margin:8px 0">打鐘後 3 分鐘內沒有全班安靜坐好、到齊</div><div>今天不抽幸運星，下次加油！</div><div class="acts"><button class="btn" data-keep="undo">按錯了，重選</button>'+nxt+'</div>','',{go:next,undo:()=>{delete ses.onTime;save();luckyStar(c,next);}});return;}
   if(ses.lucky)show(false);
@@ -979,13 +991,14 @@ function luckyStar(c,next){
 }
 function activeGroups(c){const sm=seatOf(c);return GROUPS.filter(g=>c.students.some(s=>sm[s.no]&&+sm[s.no][0]===g));}
 function cleanPassed(cl,g){return S.cleanItems.every((x,i)=>cl.done[g+'_'+i]);}
+function lessonScore(c,g){const ses=c.session;if(!ses)return 0;const sm=seatOf(c);let t=ses.gAdd[g]||0;Object.keys(ses.bonus||{}).forEach(no=>{if(sm[no]&&+sm[no][0]===g)t+=ses.bonus[no]||0;});return t;}
 function denseRank(act,val){const vs=[...new Set(act.map(val))].sort((x,y)=>y-x),r={};act.forEach(g=>{const k=vs.indexOf(val(g))+1;if(k<=3)r[g]=k;});return r;}
 function settle(){
-  const c=cur(),ses=c&&c.session;if(!ses)return;const act=activeGroups(c),pts=[+S.settings.rk1,+S.settings.rk2,+S.settings.rk3];
-  let rk=denseRank(act,g=>ses.gAdd[g]||0);
-  const draw=()=>{const any=act.some(g=>rk[g]);modal('<h2>🏅 本節分組名次</h2><div class="small">依這節課各組加分自動排好名次，<b>同分的組別同一個名次</b>（例如第 2、3 組同分，兩組都是第 2 名）。點組別可以手動切換名次。每位出席組員都會加個人 ⭐（小組金幣也一起加）。</div><div class="rkg">'+act.map(g=>{const r=rk[g];return '<button class="rkb'+(r?' on':'')+'" data-keep="pk" data-g="'+g+'" style="--gc:'+GC[g][1]+';background:'+GC[g][0]+'"><b>第 '+g+' 組</b><span>本節 🪙+'+(ses.gAdd[g]||0)+'</span><span>'+(r?'第 '+r+' 名　每人 ⭐+'+pts[r-1]:'—')+'</span></button>';}).join('')+'</div>'+
+  const c=cur(),ses=c&&c.session;if(!ses)return;if(!ses.luckyDone){luckyStar(c,()=>settle());return;}const act=activeGroups(c),pts=[+S.settings.rk1,+S.settings.rk2,+S.settings.rk3];
+  let rk=denseRank(act,g=>lessonScore(c,g));
+  const draw=()=>{const any=act.some(g=>rk[g]);modal('<h2>🏅 本節分組名次</h2><div class="small">依<b>這節課</b>各組得到的分數排名（不看累積金幣），<b>同分的組別同一個名次</b>（例如第 2、3 組同分，兩組都是第 2 名）。點組別可以手動切換名次。每位出席組員都會加個人 ⭐（小組金幣也一起加）。</div><div class="rkg">'+act.map(g=>{const r=rk[g];return '<button class="rkb'+(r?' on':'')+'" data-keep="pk" data-g="'+g+'" style="--gc:'+GC[g][1]+';background:'+GC[g][0]+'"><b>第 '+g+' 組</b><span>本節得分 +'+lessonScore(c,g)+'</span><span>'+(r?'第 '+r+' 名　每人 ⭐+'+pts[r-1]:'—')+'</span></button>';}).join('')+'</div>'+
     '<div class="acts"><button class="btn" data-keep="auto">依分數自動排</button><button class="btn" data-keep="skip">不加名次分</button><button class="btn pri" data-keep="ok"'+(any?'':' disabled')+'>確定並下課結算</button></div>','wide',{__lock:true,
-    pk:b=>{const g=+b.dataset.g,r=rk[g]||0;if(r>=3)delete rk[g];else rk[g]=r+1;draw();},auto:()=>{rk=denseRank(act,g=>ses.gAdd[g]||0);draw();},
+    pk:b=>{const g=+b.dataset.g,r=rk[g]||0;if(r>=3)delete rk[g];else rk[g]=r+1;draw();},auto:()=>{rk=denseRank(act,g=>lessonScore(c,g));draw();},
     skip:()=>{closeModal();settleCore({});},ok:()=>{closeModal();settleCore(rk);}});};
   draw();
 }
@@ -1081,7 +1094,7 @@ function statsOf(c){
 }
 function renderRecords(){
   const c=cur(),el=$('#view-records');if(!c){el.innerHTML='';return;}const st=statsOf(c),sm=seatOf(c);
-  let h='<div class="panel"><div class="row" style="justify-content:space-between;margin-top:0"><h2 style="margin:0">📊 '+esc(c.name)+' 學生累計</h2><span><button class="btn sm" data-r="csv">⬇️ 匯出學生累計 CSV</button> <button class="btn sm" data-r="supcsv">⬇️ 匯出學用品登記 CSV</button></span></div><div class="tw"><table><tr><th>座號</th><th>姓名</th><th>組</th><th>📈 累計得分</th><th>⭐ 可用點數</th><th>⚠️ 警告</th><th>💬 聊聊</th><th>🎒 缺帶節數</th><th>缺帶明細</th><th>請假</th></tr>';
+  let h='<div class="panel"><div class="row" style="justify-content:space-between;margin-top:0"><h2 style="margin:0">📊 '+esc(c.name)+' 學生累計</h2><span><button class="btn sm" data-r="csv">⬇️ 匯出學生累計 CSV</button> <button class="btn sm" data-r="supcsv">⬇️ 匯出學用品登記 CSV</button></span></div><div class="tw"><table><tr><th>座號</th><th>姓名</th><th>組</th><th>📈 累計得分</th><th>⭐ 可用點數</th><th>🤝 包容</th><th>💬 聊聊</th><th>🎒 缺帶節數</th><th>缺帶明細</th><th>請假</th></tr>';
   c.students.slice().sort((a,b)=>a.no-b.no).forEach(s=>{const x=st[s.no];h+='<tr><td><b>'+s.no+'</b></td><td>'+esc(s.name)+'</td><td>'+(sm[s.no]?sm[s.no][0]:'—')+'</td><td>'+(c.bricks[s.no]||0)+'</td><td><b>'+ptsOf(c,s.no)+'</b></td><td>'+x.warn+'</td><td>'+(x.talk||'')+'</td><td>'+(x.miss||'')+'</td><td>'+esc(Object.keys(x.items).map(k=>k+'×'+x.items[k]).join('、'))+'</td><td>'+(x.abs||'')+'</td></tr>';});
   h+='</table></div></div><div class="panel"><h2>🗓️ 每節紀錄</h2>';
   if(!c.lessons.length)h+='<div class="small">還沒有完成的課堂紀錄，下課結算後會出現在這裡。</div>';
@@ -1100,7 +1113,7 @@ $('#view-records').addEventListener('click',e=>{
   const b=e.target.closest('[data-r]');if(!b)return;const c=cur(),a=b.dataset.r;
   if(a==='note'){const l=c.lessons[+b.dataset.i];if(!l)return;modal('<h2>📖 進度備註</h2><div class="small">'+esc(l.day)+'</div><textarea id="lnote2" rows="4" style="width:100%">'+esc(l.note||'')+'</textarea><div class="acts"><button class="btn" data-act="x">取消</button><button class="btn pri" data-keep="ok">儲存</button></div>','',{ok:()=>{l.note=($('#lnote2').value||'').trim();save();closeModal();renderRecords();toast('已儲存進度備註');}});return;}
   if(a==='del')confirmBox('刪除這節紀錄？','刪除後無法復原。','刪除',()=>{c.lessons.splice(+b.dataset.i,1);save();renderRecords();},true);
-  else if(a==='csv'){const st=statsOf(c),sm=seatOf(c);const rows=[['座號','姓名','組別','金幣','警告次數','聊聊次數','缺帶節數','缺帶明細','請假節數']];
+  else if(a==='csv'){const st=statsOf(c),sm=seatOf(c);const rows=[['座號','姓名','組別','金幣','包容次數','聊聊次數','缺帶節數','缺帶明細','請假節數']];
     c.students.slice().sort((x,y)=>x.no-y.no).forEach(s=>{const x=st[s.no];rows.push([s.no,s.name,sm[s.no]?sm[s.no][0]:'',c.bricks[s.no]||0,x.warn,x.talk,x.miss,Object.keys(x.items).map(k=>k+'×'+x.items[k]).join('、'),x.abs]);});
     download(c.name+'_學生累計.csv','﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv');}
   else if(a==='supcsv'){const rows=[['日期','座號','姓名','缺帶項目']];c.lessons.forEach(l=>{Object.keys(l.miss||{}).map(Number).sort((x,y)=>x-y).forEach(no=>{const s=stu(c,no);rows.push([l.day,no,s?s.name:'',l.miss[no].join('、')]);});});
@@ -1498,17 +1511,17 @@ function showRules(){
   h+='<div class="rsec" id="rs1"><div class="rlegend"><span><b>⭐ 個人點數</b>用來兌換點歌卡、功能卡、樂透（兌換會扣點）</span><span><b>🪙 小組金幣</b>用在魔法小鎮種小麥、抽魔法卡</span><span>個人加分時，小組金幣也會一起加</span></div>'+
     '<div class="rcols"><div class="rbox plus"><h2>加分</h2>'+
       row('👍','課堂表現好','個人','⭐+1','老師點座位加分')+
-      row('🌟','整節零警告','個人','⭐+'+t.bGood,'下課結算時自動加')+
-      row('🍀','本日幸運星','個人','⭐+'+t.lucky,'打鐘後 3 分鐘內全班安靜坐好、到齊（被老師留下的不算）才抽；從沒被警告的同學抽一位，被警告超過 '+t.luckyMax+' 人就不抽')+
+      row('🌟','整節零包容','個人','⭐+'+t.bGood,'下課結算時自動加')+
+      row('🍀','本日幸運星','個人','⭐+'+t.lucky,'打鐘後 3 分鐘內全班安靜坐好、到齊（被老師留下的不算）才抽；從沒被包容的同學抽一位，被包容超過 '+t.luckyMax+' 人就不抽')+
       row('🎒','全班都帶學用品','全班','⭐+'+t.bSup,'全班都有帶才加分')+
       row('🧹','下課整理通過','整組每人','⭐+'+t.bClean,'組長檢查、'+fr+'確認')+
       row('🏅','分組名次','整組每人','⭐+'+t.rk1+'／+'+t.rk2+'／+'+t.rk3,'下課依各組加分排第 1／2／3 名')+
       row('📝','考試無人補考','全班','⭐+'+t.examBonus,'每次考試全班到齊')+
       row('🏆','小組加分','小組','🪙 −1／+1／自訂','各組標題列的按鈕，只加小組金幣')+
     '</div><div class="rbox minus"><h2>扣分</h2>'+
-      row('⚠️','上課警告','個人','滿 '+t.limit+' 次 ⭐−'+t.penalty,'警告滿 '+t.limit+' 次扣分，並且'+esc(t.limitMsg),true)+
+      row('🤝','上課包容','個人','滿 '+t.limit+' 次 ⭐−'+t.penalty,'包容滿 '+t.limit+' 次扣分，並且'+esc(t.limitMsg),true)+
       row('🎒','未帶學用品','個人','第 '+(+t.supFree+1)+' 次起 ⭐−'+t.supPen,'前 '+t.supFree+' 次不扣分，之後每次未帶扣分',true)+
-      '<div class="rtip">💡 警告點數會顯示在座位的小圓點上：<span class="dotd y"></span>第 1 次 <span class="dotd o"></span>第 '+(t.limit-1)+' 次 <span class="dotd r"></span>第 '+t.limit+' 次</div>'+
+      '<div class="rtip">💡 包容點數會顯示在座位的小圓點上：<span class="dotd y"></span>第 1 次 <span class="dotd o"></span>第 '+(t.limit-1)+' 次 <span class="dotd r"></span>第 '+t.limit+' 次</div>'+
     '</div></div></div>';
   h+='<div class="rsec" id="rs2" hidden><h2 class="rh2">⭐ 個人點數兌換</h2><div class="rshop">'+
       '<div class="ritem c1"><div class="ric">🎵</div><b>點歌卡</b><div class="rcost">⭐ '+t.r1+'</div><span>下課前播一首自己點的歌</span></div>'+
@@ -1609,7 +1622,7 @@ $('#view-setup').addEventListener('click',e=>{
   else if(a==='rename'){modal('<h2>班級改名</h2><input type="text" id="rn" value="'+esc(c.name)+'" style="font-size:20px;width:240px"><div class="acts"><button class="btn" data-act="x">取消</button><button class="btn pri" data-keep="ok">確定</button></div>','',{ok:()=>{const v=$('#rn').value.trim();if(v)c.name=v;closeModal();save();renderAll();}});}
   else if(a==='clrpts'){
     const wipe=L=>{L.forEach(x=>{x.pts={};x.bricks={};x.gb={1:0,2:0,3:0};x.dojoBase={};if(x.session){x.session.bonus={};x.session.gAdd={};x.session.undo=[];}});save();renderAll();};
-    modal('<h2>🧹 清除積分</h2><div>會把<b>個人點數 ⭐、累計得分、小組金幣 🪙</b>全部歸零。<br>班級、座號、姓名、照片、座位，以及學用品、作業考試、警告等紀錄都會保留。</div><div class="small" style="margin-top:6px">ClassDojo 的匯入基準也會一起清掉，之後重新匯入會從頭加分。清除後無法復原，建議先到「設定」下載備份檔。</div>'+
+    modal('<h2>🧹 清除積分</h2><div>會把<b>個人點數 ⭐、累計得分、小組金幣 🪙</b>全部歸零。<br>班級、座號、姓名、照片、座位，以及學用品、作業考試、包容等紀錄都會保留。</div><div class="small" style="margin-top:6px">ClassDojo 的匯入基準也會一起清掉，之後重新匯入會從頭加分。清除後無法復原，建議先到「設定」下載備份檔。</div>'+
       '<div class="acts"><button class="btn" data-act="x">取消</button><button class="btn danger" data-act="one">只清除「'+esc(c.name)+'」</button><button class="btn danger" data-act="all">清除全部 '+S.classes.length+' 個班</button></div>','',{
       one:()=>confirmBox('確定清除「'+c.name+'」的積分？','無法復原。','清除',()=>{wipe([c]);toast('已清除「'+c.name+'」的積分');},true),
       all:()=>confirmBox('確定清除全部班級的積分？','全部 '+S.classes.length+' 個班的點數和金幣都會歸零，無法復原。','全部清除',()=>{wipe(S.classes);toast('已清除全部班級的積分');},true)});}
@@ -1636,11 +1649,11 @@ $('#view-setup').addEventListener('change',async e=>{
 /* ---------- 設定 ---------- */
 function renderSettings(){
   const s=S.settings,num=(k,min,max)=>'<input type="number" min="'+min+'" max="'+max+'" value="'+s[k]+'" data-set="'+k+'">',chk=(k,t)=>'<label><input type="checkbox" data-set="'+k+'"'+(s[k]?' checked':'')+'> '+t+'</label>';
-  $('#view-settings').innerHTML='<div class="panel"><h2>⚠️ 警告規則</h2><div class="row">警告滿 '+num('limit',1,5)+' 次 → 扣個人 ⭐ '+num('penalty',0,10)+' 點（不扣小組金幣），並列入「聊聊名單」</div><div class="row">畫面提示文字 <input type="text" data-set="limitMsg" value="'+esc(s.limitMsg)+'" style="width:320px"></div></div>'+
-    '<div class="panel"><h2>🪙 金幣規則</h2><div class="row">整節零警告 +'+num('bGood',0,5)+'　全班都帶學用品 +'+num('bSup',0,5)+'　組長檢查通過（整組每人）+'+num('bClean',0,5)+'</div>'+
+  $('#view-settings').innerHTML='<div class="panel"><h2>🤝 包容規則</h2><div class="row">包容滿 '+num('limit',1,5)+' 次 → 扣個人 ⭐ '+num('penalty',0,10)+' 點（不扣小組金幣），並列入「聊聊名單」</div><div class="row">畫面提示文字 <input type="text" data-set="limitMsg" value="'+esc(s.limitMsg)+'" style="width:320px"></div></div>'+
+    '<div class="panel"><h2>🪙 金幣規則</h2><div class="row">整節零包容 +'+num('bGood',0,5)+'　全班都帶學用品 +'+num('bSup',0,5)+'　組長檢查通過（整組每人）+'+num('bClean',0,5)+'</div>'+
     '</div>'+
     '<div class="panel"><h2>🎒 學用品扣分</h2><div class="row">未帶滿 '+num('supFree',0,20)+' 次後，第 '+(+s.supFree+1)+' 次起每次未帶扣 '+num('supPen',0,10)+' 分（個人 ⭐ 與小組 🪙；設 0 就不扣）</div></div>'+
-    '<div class="panel"><h2>⭐ 個人點數與兌換</h2><div class="row">🎵 點歌卡 ⭐'+num('r1',1,999)+'　🃏 抽功能卡 ⭐'+num('r2',1,999)+'　🎰 樂透 ⭐'+num('r3',1,999)+'</div><div class="row">下課結算依分組名次加分（每位組員）：第 1 名 +'+num('rk1',0,20)+'　第 2 名 +'+num('rk2',0,20)+'　第 3 名 +'+num('rk3',0,20)+'　考試無人補考全班 +'+num('examBonus',0,50)+'</div><div class="row">🍀 本日幸運星（每節下課抽一位沒被警告的同學）個人 ⭐+'+num('lucky',0,50)+'　被警告超過 '+num('luckyMax',0,40)+' 人這節不抽</div><div class="small">個人加分會同時加到小組金幣；兌換只扣個人點數，不影響小組金幣。</div></div>'+
+    '<div class="panel"><h2>⭐ 個人點數與兌換</h2><div class="row">🎵 點歌卡 ⭐'+num('r1',1,999)+'　🃏 抽功能卡 ⭐'+num('r2',1,999)+'　🎰 樂透 ⭐'+num('r3',1,999)+'</div><div class="row">下課結算依分組名次加分（每位組員）：第 1 名 +'+num('rk1',0,20)+'　第 2 名 +'+num('rk2',0,20)+'　第 3 名 +'+num('rk3',0,20)+'　考試無人補考全班 +'+num('examBonus',0,50)+'</div><div class="row">🍀 本日幸運星（每節下課抽一位沒被包容的同學）個人 ⭐+'+num('lucky',0,50)+'　被包容超過 '+num('luckyMax',0,40)+' 人這節不抽</div><div class="small">個人加分會同時加到小組金幣；兌換只扣個人點數，不影響小組金幣。</div></div>'+
     '<div class="panel"><h2>🎰 樂透</h2><div class="row">每月開獎日 <input type="text" data-set="drawDays" value="'+esc(s.drawDays)+'" style="width:90px">　期末（彩券有效到）<input type="date" data-set="termEnd" value="'+esc(s.termEnd)+'"></div><div class="row">'+[3,4,5,6].map(k=>'對中 '+k+' 個 <input type="text" data-set="p'+k+'" value="'+esc(s['p'+k])+'" style="width:120px">').join('　')+'</div></div>'+
     '<div class="panel"><h2>🌾 魔法麥田</h2><div class="row">每個時期至少等 '+num('farmMin',0,30)+' 分鐘　'+chk('nextLesson','「灌漿成熟期」要等到下一節課（這節課灑播、下節課收成）')+'</div>'+
       '<div class="row">'+WHEAT_ST.slice(0,6).map((x,i)=>x[0]+' 🪙'+num('sc'+i,0,200)).join('　')+'</div>'+
