@@ -1006,6 +1006,8 @@ function luckyStar(c,next0){
     show(true);spinBall($('#luckMach'),s.no).then(()=>{if(view==='class')renderClass();show(false);fanfare();});};
   const nw=Object.keys(ses.warn).filter(k=>ses.warn[k]>0).length,mx=+S.settings.luckyMax;
   if(!ses.lucky&&nw>mx){modal('<h2>🌟 本日幸運星</h2><div style="font-size:52px">🌧️</div><div style="font-size:20px;margin:8px 0">這節課有 <b>'+nw+'</b> 位同學被包容（超過 '+mx+' 位）</div><div>今天不抽幸運星，下次加油！</div><div class="acts">'+nxt+'</div>','',{go:next});return;}
+  const noSup=c.students.filter(s=>sm[s.no]&&!ses.absent[s.no]&&ses.miss[s.no]&&ses.miss[s.no].length);
+  if(!ses.lucky&&noSup.length){modal('<h2>🌟 本日幸運星</h2><div style="font-size:52px">🎒</div><div style="font-size:20px;margin:8px 0">這節課有 <b>'+noSup.length+'</b> 位同學沒帶齊學用品</div><div class="small">'+noSup.map(s=>s.no+' 號').join('、')+'</div><div>全班帶齊才抽幸運星，下次加油！</div><div class="acts">'+nxt+'</div>','',{go:next});return;}
   if(!ses.lucky&&ses.onTime==null){modal('<h2>🌟 本日幸運星</h2><div style="font-size:21px;margin:10px 0;font-weight:800">這節課沒有按「全班坐好、到齊了」</div><div class="small">打鐘後 3 分鐘內，全班有安靜坐好、到齊嗎？（被老師留下的同學不算）</div><div class="rolebtns"><button class="rdo ok" data-keep="y"><span class="ri">✅</span><b>有，全班到齊</b><em>可以抽幸運星</em></button><button class="rdo" data-keep="n"><span class="ri">⏰</span><b>沒有</b><em>這節不抽</em></button></div>','',{__lock:true,
       y:()=>{ses.onTime=true;save();luckyStar(c,next);},n:()=>{ses.onTime=false;save();luckyStar(c,next);}});return;}
   if(!ses.lucky&&ses.onTime===false){modal('<h2>🌟 本日幸運星</h2><div style="font-size:52px">⏰</div><div style="font-size:20px;margin:8px 0">打鐘後 3 分鐘內沒有全班安靜坐好、到齊</div><div>今天不抽幸運星，下次加油！</div><div class="acts"><button class="btn" data-keep="undo">按錯了，重選</button>'+nxt+'</div>','',{go:next,undo:()=>{delete ses.onTime;save();luckyStar(c,next);}});return;}
@@ -1536,7 +1538,7 @@ function showRules(){
     '<div class="rcols"><div class="rbox plus"><h2>加分</h2>'+
       row('👍','課堂表現好','個人','⭐+1','老師點座位加分')+
       row('🌟','整節零包容','個人','⭐+'+t.bGood,'下課結算時自動加')+
-      row('🍀','本日幸運星','個人','⭐+'+t.lucky,'打鐘後 3 分鐘內全班安靜坐好、到齊（被老師留下的不算）才抽；從沒被包容的同學抽一位，被包容超過 '+t.luckyMax+' 人就不抽')+
+      row('🍀','本日幸運星','個人','⭐+'+t.lucky,'打鐘後 3 分鐘內全班安靜坐好、到齊（被老師留下的不算），而且全班帶齊學用品才抽；從沒被包容的同學抽一位，被包容超過 '+t.luckyMax+' 人就不抽')+
       row('🎒','全班都帶學用品','全班','⭐+'+t.bSup,'全班都有帶才加分')+
       row('🧹','下課整理通過','整組每人','⭐+'+t.bClean,'組長檢查、'+fr+'確認')+
       row('🏅','分組名次','整組每人','⭐+'+t.rk1+'／+'+t.rk2+'／+'+t.rk3,'下課依各組加分排第 1／2／3 名')+
