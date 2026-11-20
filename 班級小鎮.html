@@ -1545,7 +1545,7 @@ function showRules(){
       '<div class="ritem c1"><div class="ric">🎵</div><b>點歌卡</b><div class="rcost">⭐ '+t.r1+'</div><span>下課前播一首自己點的歌</span></div>'+
       '<div class="ritem c2"><div class="ric">🃏</div><b>抽功能卡</b><div class="rcost">⭐ '+t.r2+'</div><span>隨機抽一張課堂功能卡</span></div>'+
       '<div class="ritem c3"><div class="ric">🎰</div><b>樂透一張</b><div class="rcost">⭐ '+t.r3+'</div><span>每月 '+esc(t.drawDays)+' 號開獎，可以對獎到期末</span></div></div>'+
-    '<h2 class="rh2">🃏 功能卡（抽到其中一張）</h2><div class="rfc">'+fcList().map(x=>'<div>'+fcVis(x)+'<b>'+esc(x.n)+'</b><span>'+esc(x.d||'')+'</span><em>機率 '+fcPct(x)+'%</em></div>').join('')+'</div>'+
+    '<h2 class="rh2">🃏 功能卡（抽到其中一張）</h2><div class="rfc">'+fcList().map(x=>'<div>'+fcVis(x)+'<b>'+esc(x.n)+'</b><span>'+esc(x.d||'')+'</span></div>').join('')+'</div>'+
     '<h2 class="rh2">🎰 樂透獎品（號碼 1～49 開出 6 個）</h2><div class="rlot">'+[3,4,5,6].map(k=>'<div><b>對中 '+k+' 個</b><span>'+esc(t['p'+k])+'</span></div>').join('')+'</div>'+
     '<h2 class="rh2">🪙 小組金幣可以做什麼</h2><div class="rlot g">'+
       '<div><b>🌾 種魔法小麥</b><span>灑播 🪙'+t.sc0+'，一輪共 🪙'+[0,1,2,3,4,5].reduce((a,i)=>a+(+t['sc'+i]),0)+'，收成 🌾'+t.yield+' 把</span></div>'+
