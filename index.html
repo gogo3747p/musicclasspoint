@@ -2,7 +2,10 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="班級小鎮">
 <title>班級小鎮｜科任班級經營</title>
 <style>
 :root{--bg:#f5f1e8;--ink:#1f2a44;--muted:#6b7280;--card:#fff;--line:#e7e1d4;--ok:#10b981;--accent:#f59e0b;
@@ -429,7 +432,7 @@ body.vclass .legend,body.vclass .modetip{color:#334155}
   <span class="brand">🏘️ 班級小鎮</span>
   <select id="classSel"></select>
   <button class="tbtn go" id="btnLesson">▶ 開始上課</button>
-  <button class="tbtn" id="btnGames">🎮 遊戲</button>
+  <button class="tbtn" id="btnGames">🎮 遊戲</button><button class="tbtn" id="btnFs" title="全螢幕">⛶ 全螢幕</button>
   <span id="syncDot" style="font-size:20px"></span>
   <span id="timer"></span>
   <nav>
@@ -473,6 +476,15 @@ document.addEventListener('click',e=>{const b=e.target.closest('#view-class [dat
   save();renderClass();},true);
 setInterval(()=>{const el=document.getElementById('otClock');if(!el)return;const c=cur(),ses=c&&c.session;if(!ses)return;const left=Math.round((ses.start+180000-Date.now())/1000);
   el.textContent=left>0?'還剩 '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0'):'已超過 3 分鐘';el.className=left>0?'':'late';},1000);
+function fsEl(){return document.fullscreenElement||document.webkitFullscreenElement;}
+function fsLabel(){const b=document.getElementById('btnFs');if(b)b.textContent=fsEl()?'↙ 離開全螢幕':'⛶ 全螢幕';}
+document.addEventListener('click',e=>{if(!e.target.closest('#btnFs'))return;const d=document.documentElement;
+  try{if(fsEl()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}
+  else if(d.requestFullscreen){d.requestFullscreen().catch(()=>fsHelp());}
+  else if(d.webkitRequestFullscreen){d.webkitRequestFullscreen();setTimeout(()=>{if(!fsEl())fsHelp();},600);}
+  else fsHelp();}catch(err){fsHelp();}});
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,fsLabel));
+function fsHelp(){modal('<h2>⛶ 全螢幕</h2><div style="text-align:left;line-height:1.8">這台裝置的瀏覽器不支援直接切換全螢幕。<br>iPad／iPhone 可以這樣做：<br>1. 用 <b>Safari</b> 打開班級小鎮<br>2. 按上方的「分享」按鈕 <b>⬆︎</b><br>3. 選「<b>加入主畫面</b>」<br>之後從主畫面的「班級小鎮」圖示打開，就會是全螢幕，沒有網址列。</div><div class="acts"><button class="btn pri" data-act="x">知道了</button></div>');}
 function seatView(){let v=null;try{v=localStorage.getItem('classtown_seatview');}catch(e){}return v==='stu'||v==='tea'?v:(S.settings.flip?'stu':'tea');}
 function setSeatView(v){try{localStorage.setItem('classtown_seatview',v);}catch(e){}}
 document.addEventListener('click',e=>{const b=e.target.closest('#view-class [data-vw]');if(!b)return;setSeatView(b.dataset.vw);renderClass();});
