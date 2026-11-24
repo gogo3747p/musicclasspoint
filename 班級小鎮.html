@@ -1843,6 +1843,25 @@ $('#classSel').addEventListener('change',e=>{S.cur=e.target.value;selSeat=null;s
 save();renderAll();
 (()=>{const m=location.hash.match(/ctsync=([^|]+)\|([^&]+)/);if(m){history.replaceState(null,'',location.href.split('#')[0]);syConnect(decodeURIComponent(m[1]),decodeURIComponent(m[2]),true);}else syStart();})();
 idbOpen().then(idbLoad).then(()=>{if(Object.keys(PH).length)renderView();});
+/* ---------- 收件匣：直笛守護者「小隊輪流」送來的小組加分（同一台裝置、同一個網址 gogo3747p.github.io） ---------- */
+const IBK='classtown_inbox';
+function inboxRun(){let L;try{L=JSON.parse(localStorage.getItem(IBK)||'[]');}catch(e){L=[];}
+  if(!Array.isArray(L)||!L.length)return;const c=cur();if(!c)return;
+  try{localStorage.setItem(IBK,'[]');}catch(e){}
+  if(!isObj(S.inboxDone))S.inboxDone={};
+  const now=Date.now(),msgs=[];
+  L.forEach(x=>{if(!x||!x.id||S.inboxDone[x.id]||!isObj(x.adds))return;S.inboxDone[x.id]=now;
+    if(now-(+x.at||0)>6*3600000)return; // 超過 6 小時的舊結果不加
+    const parts=[];GROUPS.forEach(g=>{const d=Math.round(+x.adds[g]||0);if(!d)return;const g0=c.gb[g]||0,g1=Math.max(0,g0+d),real=g1-g0;if(!real)return;c.gb[g]=g1;
+      const ses=c.session;if(ses){ses.gAdd[g]=(ses.gAdd[g]||0)+real;ses.undo.push({t:'gadd',g:g,d:real});}parts.push('第 '+g+' 組 +'+real);});
+    if(parts.length)msgs.push((x.src||'遊戲')+'：'+parts.join('、'));});
+  Object.keys(S.inboxDone).forEach(k=>{if(now-S.inboxDone[k]>7*86400000)delete S.inboxDone[k];});
+  if(!msgs.length){save();return;}
+  save();try{renderClass();}catch(e){}tone(880,0.12,'triangle',0.15);setTimeout(()=>tone(1175,0.16,'triangle',0.15),130);
+  modal('<h2>🎺 收到遊戲加分</h2><div style="font-size:20px;line-height:1.7">'+msgs.map(esc).join('<br>')+'</div><div class="small">已加到「'+esc(c.name)+'」的小組金幣'+(c.session?'，也算進這節課的分數':'')+'。按錯可以用「↩ 復原」。</div><div class="acts"><button class="btn pri" data-act="x">好</button></div>');}
+window.addEventListener('storage',e=>{if(e.key===IBK)inboxRun();});
+window.addEventListener('focus',()=>inboxRun());document.addEventListener('visibilitychange',()=>{if(!document.hidden)inboxRun();});
+setInterval(inboxRun,4000);setTimeout(inboxRun,800);
 })();
 </script>
 </body>
