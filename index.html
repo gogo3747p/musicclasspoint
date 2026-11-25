@@ -1847,11 +1847,11 @@ $('#classSel').addEventListener('change',e=>{S.cur=e.target.value;selSeat=null;s
 save();renderAll();
 (()=>{const m=location.hash.match(/ctsync=([^|]+)\|([^&]+)/);if(m){history.replaceState(null,'',location.href.split('#')[0]);syConnect(decodeURIComponent(m[1]),decodeURIComponent(m[2]),true);}else syStart();})();
 idbOpen().then(idbLoad).then(()=>{if(Object.keys(PH).length)renderView();});
-/* ---------- 收件匣：直笛守護者「小隊輪流」送來的小組加分（同一台裝置、同一個網址 gogo3747p.github.io） ---------- */
-const IBK='classtown_inbox';
-function inboxRun(){let L;try{L=JSON.parse(localStorage.getItem(IBK)||'[]');}catch(e){L=[];}
-  if(!Array.isArray(L)||!L.length)return;const c=cur();if(!c)return;
-  try{localStorage.setItem(IBK,'[]');}catch(e){}
+/* ---------- 收件匣：直笛守護者／唱名泡泡送來的小組加分 ----------
+   同一台裝置：透過瀏覽器的 localStorage（classtown_inbox）
+   其他平板：透過 Firebase（{資料庫}/classtown/{房間}/inbox），需要在「☁️ 平板同步」連線 */
+const IBK='classtown_inbox';let IBBUSY=false;
+function inboxApply(L){const c=cur();if(!c||!L.length)return;
   if(!isObj(S.inboxDone))S.inboxDone={};
   const now=Date.now(),msgs=[];
   L.forEach(x=>{if(!x||!x.id||S.inboxDone[x.id]||!isObj(x.adds))return;S.inboxDone[x.id]=now;
@@ -1860,9 +1860,20 @@ function inboxRun(){let L;try{L=JSON.parse(localStorage.getItem(IBK)||'[]');}cat
       const ses=c.session;if(ses){ses.gAdd[g]=(ses.gAdd[g]||0)+real;ses.undo.push({t:'gadd',g:g,d:real});}parts.push('第 '+g+' 組 +'+real);});
     if(parts.length)msgs.push((x.src||'遊戲')+'：'+parts.join('、'));});
   Object.keys(S.inboxDone).forEach(k=>{if(now-S.inboxDone[k]>7*86400000)delete S.inboxDone[k];});
-  if(!msgs.length){save();return;}
-  save();try{renderClass();}catch(e){}tone(880,0.12,'triangle',0.15);setTimeout(()=>tone(1175,0.16,'triangle',0.15),130);
+  save();if(!msgs.length)return;
+  try{renderClass();}catch(e){}tone(880,0.12,'triangle',0.15);setTimeout(()=>tone(1175,0.16,'triangle',0.15),130);
   modal('<h2>🎺 收到遊戲加分</h2><div style="font-size:20px;line-height:1.7">'+msgs.map(esc).join('<br>')+'</div><div class="small">已加到「'+esc(c.name)+'」的小組金幣'+(c.session?'，也算進這節課的分數':'')+'。按錯可以用「↩ 復原」。</div><div class="acts"><button class="btn pri" data-act="x">好</button></div>');}
+async function inboxRemote(){const cfg=syGet();if(!cfg.on||!cfg.u||!cfg.r)return [];const out=[];
+  try{const r=await fetch(syURL(cfg,'/inbox'),{cache:'no-store'});if(!r.ok)return out;const all=(await r.json())||{};
+    for(const k of Object.keys(all)){const u=syURL(cfg,'/inbox/'+encodeURIComponent(k));
+      // 先「認領」：用 ETag 確保同一筆只會被一台班級小鎮加分
+      let ok=false;try{const g=await fetch(u,{cache:'no-store',headers:{'X-Firebase-ETag':'true'}});const et=g.headers.get('ETag'),v=await g.json();
+        if(v){if(et){const d=await fetch(u,{method:'PUT',body:'null',headers:{'if-match':et}});ok=d.ok;}else{const d=await fetch(u,{method:'DELETE'});ok=d.ok;}if(ok)out.push(v);}}catch(e){}}
+  }catch(e){}return out;}
+async function inboxRun(){if(IBBUSY||!cur())return;IBBUSY=true;
+  try{let L=[];try{L=JSON.parse(localStorage.getItem(IBK)||'[]');}catch(e){L=[];}if(!Array.isArray(L))L=[];
+    if(L.length)try{localStorage.setItem(IBK,'[]');}catch(e){}
+    const R=await inboxRemote();inboxApply(L.concat(R));}catch(e){}IBBUSY=false;}
 window.addEventListener('storage',e=>{if(e.key===IBK)inboxRun();});
 window.addEventListener('focus',()=>inboxRun());document.addEventListener('visibilitychange',()=>{if(!document.hidden)inboxRun();});
 setInterval(inboxRun,4000);setTimeout(inboxRun,800);
