@@ -1770,7 +1770,7 @@ function syStatus(st,msg){if(SY){SY.st=st;SY.msg=msg||'';}const el=$('#syncDot')
 async function syFetchDoc(cfg){
   let etag=null,r;
   try{r=await fetch(syURL(cfg,'/doc'),{cache:'no-store',headers:{'X-Firebase-ETag':'true'}});}catch(e){r=await fetch(syURL(cfg,'/doc'),{cache:'no-store'});}
-  if(!r.ok)throw new Error('HTTP '+r.status);etag=r.headers.get('ETag');const v=await r.json();
+  if(!r.ok){const er=new Error('HTTP '+r.status);er.status=r.status;throw er;}etag=r.headers.get('ETag');const v=await r.json();
   return {doc:v?JSON.parse(v):null,etag:etag};
 }
 async function syPutDoc(cfg,d,etag){
@@ -1818,7 +1818,11 @@ async function syConnect(u,r,join){
   if(!/^https:\/\/.+(firebaseio\.com|firebasedatabase\.app)/.test(u)){toast('請輸入 Firebase 資料庫網址（https 開頭，結尾是 firebaseio.com 或 firebasedatabase.app）');return;}
   if(!/^[A-Za-z0-9_-]{4,40}$/.test(r)){toast('房間代碼請用 4～40 個英文、數字');return;}
   const cfg={u:u,r:r,on:true};let R=null;
-  try{R=(await syFetchDoc(cfg)).doc;}catch(e){toast('連不到這個資料庫，請檢查網址');return;}
+  try{R=(await syFetchDoc(cfg)).doc;}catch(e){const st=e&&e.status;
+    if(st===401||st===403)modal('<h2>☁️ 資料庫拒絕連線</h2><div style="text-align:left;line-height:1.8">網址是對的，但 Firebase 的<b>讀寫權限被關掉了</b>（測試模式通常 30 天後會自動到期）。<br>請到 Firebase 控制台 → Realtime Database →「規則」，把規則改成：<pre style="background:#f1f5f9;border-radius:8px;padding:8px;text-align:left">{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}</pre>按「發布」後，再回來按「開始同步」。</div><div class="acts"><button class="btn pri" data-act="x">知道了</button></div>');
+    else if(st===404)modal('<h2>☁️ 找不到這個資料庫</h2><div style="text-align:left;line-height:1.8">這個網址沒有對應的 Firebase 資料庫。請到 Firebase 控制台 → Realtime Database，複製最上方的網址（像 <code>https://xxxx-default-rtdb.firebaseio.com</code> 或 <code>…firebasedatabase.app</code>），整段貼上，前後不要有空格。</div><div class="acts"><button class="btn pri" data-act="x">知道了</button></div>');
+    else modal('<h2>☁️ 連不到資料庫</h2><div style="text-align:left;line-height:1.8">'+(st?'資料庫回應錯誤（代碼 '+st+'）。':'這台裝置連不上網路，或網址打錯了。')+'<br>請確認：<br>1. 平板有連上網路<br>2. 網址從 Firebase 控制台整段複製，前後沒有空格<br>3. Firebase 專案沒有被刪除或停用</div><div class="acts"><button class="btn pri" data-act="x">知道了</button></div>');
+    return;}
   const go=mode=>{if(mode==='cloud'){applyDoc(R);sySetBase(R);}else if(mode==='mine'){try{localStorage.removeItem(SYB);}catch(e){}}
     sySet(cfg);syStart();renderView();toast('☁️ 已連上雲端同步');};
   if(!R){go('mine');return;}
